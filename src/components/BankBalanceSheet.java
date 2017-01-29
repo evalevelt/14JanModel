@@ -11,6 +11,8 @@ public class BankBalanceSheet {
     double Omega_3;
     double Omega_4;
     double Omega_5;
+    double C;
+    double L;
 
 
 
@@ -22,6 +24,8 @@ public class BankBalanceSheet {
         this.Omega_4=0;
         this.Omega_5=0;
         this.bank=null;
+        this.C=0;
+        this.L=0;
     }
 
     public void addStocks(double newStocks){
@@ -34,6 +38,28 @@ public class BankBalanceSheet {
         Omega_3=Omega_3+three;
         Omega_4=Omega_4+four;
         Omega_5=Omega_5+five;
+    }
+
+    public void addCash(double Cash){
+        this.C=C+Cash;
+    }
+
+    public void addLiability(double Liability){
+        this.L=L+Liability;
+    }
+
+    public double getLiability(){
+        return L;
+    }
+
+    public double getCash() {
+        return C;
+    }
+
+
+
+    public double getTotalRepo(){
+        return Omega_1+Omega_2+Omega_3+Omega_4+Omega_5;
     }
 
     public void printBank(){

@@ -14,13 +14,14 @@ import java.util.List;
  */
 public class TestFullInitialisation extends SimState implements Steppable {
     private int nstep;
-    private int NSTEPS=10;
+    private int NSTEPS=1;
     public Stoppable scheduleRepeat;
     private ArrayList<Bank> banks;
     private ArrayList<Hedgefund> hedgefunds;
+    public Parameters parameters;
 
 
-
+//STILL GETS STOCKPRICE FROM PARAMETERS RATHER THAN MARKET
 
 
     public TestFullInitialisation(long seed) {
@@ -29,8 +30,11 @@ public class TestFullInitialisation extends SimState implements Steppable {
 
     public void start() {
         super.start();
+        parameters = new Parameters();
+        parameters.initialise();
 
-        double[][] repos={{0,2,3,0,0},{1,0,2,0,0},{4,8,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+        double[][] repos={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+        double [] bankliabilities={10,12,13,0,0};
 
         //TODO insert test for this matrix
 
@@ -39,8 +43,12 @@ public class TestFullInitialisation extends SimState implements Steppable {
             BankBalanceSheet sheet = new BankBalanceSheet();
             Bank bank = new Bank("Bank " + j);
             bank.setBalancesheet(sheet);
-            bank.getBalancesheet().addStocks(2.0);
-            bank.getBalancesheet().addRepo(repos[j][0], repos[j][1], repos[j][2], repos[j][3], repos[j][4]);
+            bank.getBalancesheet().addRepo(repos[j-1][0], repos[j-1][1], repos[j-1][2], repos[j-1][3], repos[j-1][4]);
+            bank.getBalancesheet().addLiability(bankliabilities[j-1]);
+            bank.getBalancesheet().addCash(bank.getBalancesheet().getLiability()*parameters.getGlobalParameters().get("kappa_T")*parameters.getGlobalParameters().get("beta"));
+            double K = ((1-parameters.getGlobalParameters().get("lambda_T"))*bank.getBalancesheet().getCash()+parameters.getGlobalParameters().get("lambda_T")*bank.getBalancesheet().getTotalRepo()+bank.getBalancesheet().getLiability())/(parameters.getGlobalParameters().get("InitialStockPrice")*(1-parameters.getGlobalParameters().get("lambda_T")));
+            bank.getBalancesheet().addStocks(K);
+
             banks.add(bank);
 
         }
@@ -50,11 +58,23 @@ public class TestFullInitialisation extends SimState implements Steppable {
             HedgefundBalanceSheet sheet = new HedgefundBalanceSheet();
             Hedgefund hedgefund = new Hedgefund("Hedgefund " + i);
             hedgefund.setBalancesheet(sheet);
-            hedgefund.getBalancesheet().addStocks(6.0);
-            hedgefund.getBalancesheet().addRepo(repos[0][i], repos[1][i], repos[2][i], repos[3][i], repos[4][i]);
+            hedgefund.getBalancesheet().addRepo(repos[0][i-1], repos[1][i-1], repos[2][i-1], repos[3][i-1], repos[4][i-1]);
+            hedgefund.getBalancesheet().addStocks(hedgefund.getBalancesheet().getTotalFunding()/(1-(parameters.getGlobalParameters().get("alpha"))*parameters.getGlobalParameters().get("InitialStockPrice"))*1.2);
+            hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*parameters.getGlobalParameters().get("InitialStockPrice"))*0.3);
             hedgefunds.add(hedgefund);
 
         }
+
+        System.out.println("INITIAL BALANCESHEETS");
+
+        System.out.println("---------------------------------------");
+
+        banks.get(0).printBalanceSheet();
+        banks.get(1).printBalanceSheet();
+        banks.get(2).printBalanceSheet();
+        hedgefunds.get(0).printBalanceSheet();
+        hedgefunds.get(1).printBalanceSheet();
+        hedgefunds.get(2).printBalanceSheet();
 
 
         nstep=0;
@@ -68,8 +88,8 @@ public class TestFullInitialisation extends SimState implements Steppable {
 
         //TODO test whether these initialisations have worked
         nstep++;
-        banks.get(1).getBehaviour().updateBalanceSheet();
-        banks.get(1).printStockValue();
+
+
         if (nstep>=NSTEPS) simstate.kill();
 
     }

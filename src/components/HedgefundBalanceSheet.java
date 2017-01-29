@@ -10,6 +10,7 @@ public class HedgefundBalanceSheet {
     double Omega_3;
     double Omega_4;
     double Omega_5;
+    double C;
     Hedgefund hedgefund;
 
     public HedgefundBalanceSheet(){
@@ -20,6 +21,7 @@ public class HedgefundBalanceSheet {
         this.Omega_4=0;
         this.Omega_5=0;
         this.hedgefund=null;
+        this.C=0;
     }
 
     public void addStocks(double newStocks){
@@ -33,6 +35,21 @@ public class HedgefundBalanceSheet {
         Omega_4=Omega_4+four;
         Omega_5=Omega_5+five;
     }
+
+    public double getTotalFunding(){
+        return Omega_1+Omega_2+Omega_3+Omega_4+Omega_5;
+    }
+
+    public double getPhi(){
+        return phi;
+    }
+
+    public void addCash(double Cash){
+        this.C=C+Cash;
+    }
+
+    public double getCash(){return this.C;}
+
 
     public void printHedgefund(){
         System.out.println(this.hedgefund.name);
