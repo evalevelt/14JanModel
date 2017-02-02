@@ -3,6 +3,8 @@ package components;
 import java.util.HashMap;
 import java.util.Map;
 
+//NO LONGER IN USE FOR THE LATER CASES OF THE MODEL!!!!!!
+
 public class Parameters extends HashMap<String, Double> {
 
     public void initialise() {

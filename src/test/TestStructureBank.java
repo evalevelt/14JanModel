@@ -2,14 +2,12 @@ package test;
 
 import components.Bank;
 import components.BankBalanceSheet;
-import components.BankBehaviour;
 import sim.engine.SimState;
 import sim.engine.Steppable;
 import sim.engine.Stoppable;
 
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by eva on 24/01/2017.
@@ -47,8 +45,7 @@ public class TestStructureBank extends SimState implements Steppable {
     @Override
     public void step(SimState simstate) {
         nstep++;
-        banks.get(1).getBehaviour().updateBalanceSheet();
-        banks.get(1).printStockValue();
+        banks.get(1).printStockAmount();
         if (nstep>=NSTEPS) simstate.kill();
 
     }

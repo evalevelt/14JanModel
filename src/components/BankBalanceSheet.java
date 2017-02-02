@@ -4,8 +4,11 @@ package components;
  * Created by eva on 24/01/2017.
  */
 public class BankBalanceSheet {
+
+    //these variables are basically the balancesheet items. they are all in pounds EXCEPT phi, which is a number of stocks
+    //for now we only have capacity for 5 hedgefunds and 5 banks. Omega_1 as a variable for a bank means the amount of repo it passes
+    //to hedgefund 1 (ideally this system changes because it's very ugly and has limited capacity).
     double phi;
-    Bank bank;
     double Omega_1;
     double Omega_2;
     double Omega_3;
@@ -13,6 +16,8 @@ public class BankBalanceSheet {
     double Omega_5;
     double C;
     double L;
+    Bank bank;
+
 
 
 
@@ -56,10 +61,12 @@ public class BankBalanceSheet {
         return C;
     }
 
-
-
     public double getTotalRepo(){
         return Omega_1+Omega_2+Omega_3+Omega_4+Omega_5;
+    }
+
+    public double calculateEquity(){
+        return (phi*bank.getBehaviour().market.S+C)-L;
     }
 
     public void printBank(){

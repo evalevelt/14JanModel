@@ -4,6 +4,10 @@ package components;
  * Created by eva on 24/01/2017.
  */
 public class HedgefundBalanceSheet {
+
+    //for now we only have capacity for 5 hedgefunds and 5 banks. Omega_1 as a variable for a hedgefund means the amount of repo it receives
+    //from bank 1. (ideally this system changes because it's very ugly and has limited capacity).
+
     double phi;
     double Omega_1;
     double Omega_2;
@@ -49,6 +53,10 @@ public class HedgefundBalanceSheet {
     }
 
     public double getCash(){return this.C;}
+
+    public double calculateEquity(){
+        return (phi*hedgefund.getBehaviour().market.S+C)-getTotalFunding();
+    }
 
 
     public void printHedgefund(){

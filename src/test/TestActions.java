@@ -33,7 +33,7 @@ public class TestActions extends SimState implements Steppable {
         super.start();
         parameters = new Parameters();
         parameters.initialise();
-        market = new Market(2.0);
+        market = new Market(1.0);
 
         double[][] repos={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{0,0,0,0,0},{0,0,0,0,0}};
         double [] bankliabilities={10,12,13,0,0};
@@ -49,7 +49,7 @@ public class TestActions extends SimState implements Steppable {
             bank.getBehaviour().setNO();
             bank.getBalancesheet().addCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
             double K = ((bank.getBehaviour().lambda_T-1)*bank.getBalancesheet().getCash()+bank.getBehaviour().lambda_T*bank.getBalancesheet().getTotalRepo()+bank.getBalancesheet().getLiability())/(market.S*(1-bank.getBehaviour().lambda_T));
-            bank.getBalancesheet().addStocks(K);
+            bank.getBalancesheet().addStocks(K+10);
 
             banks.add(bank);
 
@@ -84,6 +84,7 @@ public class TestActions extends SimState implements Steppable {
         hedgefunds.get(1).printBalanceSheet();
         hedgefunds.get(2).printBalanceSheet();
 
+        market.setS(market.S*0.7);
 
         nstep=0;
         scheduleRepeat = schedule.scheduleRepeating(this);
@@ -93,66 +94,79 @@ public class TestActions extends SimState implements Steppable {
 
     @Override
     public void step(SimState simstate) {
-        market.setS(market.S*0.7);
+
+        System.out.println("I'm starting step "+nstep+" with price"+market.S);
+        System.out.println("-------------------------------------");
 
 
         for (int j = 0; j < 3; j++) {
            banks.get(j).printBalanceSheet();
-//           System.out.println("leverage is now"+banks.get(j).getBehaviour().returnLeverage());
-
             banks.get(j).getBehaviour().checkSolvency();
             banks.get(j).getBehaviour().checkLeverage();
             banks.get(j).getBehaviour().deleverRule2();
             banks.get(j).getBehaviour().checkLCR();
 
-//            System.out.println("unsolvent?" +banks.get(j).D);
-//            System.out.println("Delevering?"+banks.get(j).B);
-//            System.out.println("decrease in funding"+banks.get(j).x);
-//            System.out.println("decrease in assets"+banks.get(j).y);
-//            System.out.println("decrease in cash"+banks.get(j).z);
-//            System.out.println("LCR breached?"+banks.get(j).D_);
         }
+        double Order=0;
 
         for(int i=0; i<3; i++){
             for (int j=0; j<3; j++) {
                 hedgefunds.get(i).getBehaviour().getFundingUpdate(j+1, banks.get(j).getBehaviour().giveFundingUpdate(i+1));
             }
-            hedgefunds.get(i).printName();
-            //hedgefunds.get(i).printNewFunding();
             hedgefunds.get(i).getBehaviour().checkSolvency();
             hedgefunds.get(i).getBehaviour().repayFunding();
-//            System.out.println(hedgefunds.get(i).z);
-//            System.out.println(hedgefunds.get(i).y);
             hedgefunds.get(i).getBehaviour().marginCall();
-//            System.out.println("y is "+(hedgefunds.get(i).y));
-//
-//            System.out.println("collateral needed"+hedgefunds.get(i).getBehaviour().collateralNeeded());
-//            System.out.println("I have "+(hedgefunds.get(i).getBalancesheet().getPhi()*market.S-hedgefunds.get(i).y));
-//            System.out.println("do we have a margin call?"+hedgefunds.get(i).D_);
-//            System.out.println("by how much"+hedgefunds.get(i).MC);
+            Order=Order+hedgefunds.get(i).getBehaviour().placeMarketOrder();
 
-            hedgefunds.get(i).updateBalanceSheet();
+
+            hedgefunds.get(i).getBehaviour().updateBalanceSheet();
             hedgefunds.get(i).printBalanceSheet();
 
 
         }
 
+
         for (int j=0; j<3;j++){
             for (int i=0; i<3; i++) {
                 banks.get(j).getBehaviour().getDefaultInfo(i+1, hedgefunds.get(i).D*hedgefunds.get(i).D_);
+
             }
 
-            banks.get(j).updateBalancesheet();
+            //NOTE THIS NOW ONLY WORKS IF THERE'S THE SAME NUMBER OF HEDGEFUNDS AND BANKS
+
+            Order=Order+banks.get(j).getBehaviour().placeMarketOrder();
+
+            banks.get(j).getBehaviour().updateBalancesheet();
             banks.get(j).printBalanceSheet();
-            //BANK REPO IS GOING NEGATIVE
+        }
+
+        double k=0;
+        k=0;
+        for(int j=0;j<3;j++){
+            k=banks.get(j).B+k;
+            k=(1-banks.get(j).D)+k;
+
+        }
+
+        for(int i=0; i<3; i++){
+            k=(1-banks.get(i).D)+k;
+
+        }
+
+        market.updateMarket(Order);
+
+        nstep++;
+        System.out.println("k is "+k);
+        if (k==0) {
+            simstate.kill();
+            System.out.println("I am stopping now. The final statistics are");
+            System.out.println("Final Stockprice" + market.S);
+            System.out.println("Number of steps"+nstep);
         }
 
 
 
-        nstep++;
-        if (nstep>=NSTEPS) simstate.kill();
-
-    }
+        }
 
     public static void main(String[] args){
         doLoop(TestActions.class, args);

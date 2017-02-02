@@ -4,12 +4,16 @@ package components;
  * Created by eva on 24/01/2017.
  */
 public class Hedgefund {
+
+    //this object stores variables that are basically auxiliary in the timestep. only at the end of the timestep are they
+    //all used to update the balancesheet. they are set by Behaviour. public/nonpublic has solely been determined by convenience
+    //as some need to be accessed in the testcase, this should be improved.
+
     String name;
-    public int D;
-    public int D_;
     HedgefundBalanceSheet Balancesheet;
     HedgefundBehaviour Behaviour;
-
+    public int D;
+    public int D_;
     double Omega_1_;
     double Omega_2_;
     double Omega_3_;
@@ -18,6 +22,8 @@ public class Hedgefund {
    public double y;
    public double z;
    public double MC;
+    public double alpha;
+
 
     public Hedgefund(String name){
         this.name=name;
@@ -78,14 +84,5 @@ public class Hedgefund {
         return Omega_1_+Omega_2_+Omega_3_+Omega_4_+Omega_5_;
     }
 
-    public void updateBalanceSheet(){
-        this.Balancesheet.phi=(this.Balancesheet.phi+(MC-y)/Behaviour.market.S)*D*D_;
-        this.Balancesheet.C=(this.Balancesheet.C-z-MC)*D*D_;
-        this.Balancesheet.Omega_1=Omega_1_*D*D_;
-        this.Balancesheet.Omega_2=Omega_2_*D*D_;
-        this.Balancesheet.Omega_3=Omega_3_*D*D_;
-        this.Balancesheet.Omega_4=Omega_4_*D*D_;
-        this.Balancesheet.Omega_5=Omega_5_*D*D_;
 
-    }
 }
