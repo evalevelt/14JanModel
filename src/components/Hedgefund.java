@@ -1,5 +1,7 @@
 package components;
 
+import Jama.Matrix;
+
 /**
  * Created by eva on 24/01/2017.
  */
@@ -10,61 +12,63 @@ public class Hedgefund {
     //as some need to be accessed in the testcase, this should be improved.
 
     String name;
-    HedgefundBalanceSheet Balancesheet;
     HedgefundBehaviour Behaviour;
     public int D;
     public int D_;
-    double Omega_1_;
-    double Omega_2_;
-    double Omega_3_;
-    double Omega_4_;
-    double Omega_5_;
+
    public double y;
    public double z;
    public double MC;
     public double alpha;
+//    public Matrix repos;
+//    public Matrix newFunding;
+//    public double[] hedgefundDefaults;
+    public int id;
+    private HedgefundBalanceSheet balanceSheet;
 
-
-    public Hedgefund(String name){
+    public Hedgefund(String name, int id){
         this.name=name;
         this.D=1;
         this.D_=1;
         this.MC=0;
         this.Behaviour=new HedgefundBehaviour();
         this.Behaviour.hedgefund=this;
+        this.id = id;
+//        this.repos = repos;
+//        this.newFunding = newFunding;
+//        this.hedgefundDefaults=hedgefundDefaults;
+        this.balanceSheet = new HedgefundBalanceSheet(this);
     }
 
 
-    public void setBalancesheet(HedgefundBalanceSheet Balancesheet){
-        this.Balancesheet=Balancesheet;
-        Balancesheet.hedgefund=this;
-    }
+//    public void setBalancesheet(HedgefundBalanceSheet Balancesheet){
+//        this.Balancesheet=Balancesheet;
+//        Balancesheet.hedgefund=this;
+//    }
 
     public HedgefundBalanceSheet getBalancesheet(){
-        return this.Balancesheet;
+        return this.balanceSheet;
     }
 
     public void printBalanceSheet(){
-        System.out.println("Balancesheet "+this.name);
+        System.out.println("balanceSheet "+this.name);
         System.out.println("Assets:");
-        System.out.println("Stockvalue "+this.Balancesheet.phi*this.getBehaviour().market.S);
-        System.out.println("Cash "+this.Balancesheet.C);
+        System.out.println("Stockvalue "+this.balanceSheet.phi*this.getBehaviour().market.S);
+        System.out.println("Cash "+this.balanceSheet.C);
         System.out.println("Liabilities:");
-        System.out.println("Repo funding "+this.Balancesheet.getTotalFunding());
+        System.out.println("Repo funding "+this.balanceSheet.getTotalFunding());
         System.out.println("---------------------------------------------");
 
 
     }
 
     public void printNewFunding(){
-        System.out.println(Omega_1_);
-        System.out.println(Omega_2_);
+        double[] newFundingColumn = newFunding.transpose().getArray()[id];
 
-        System.out.println(Omega_3_);
+        for (double repo : newFundingColumn) {
 
-        System.out.println(Omega_4_);
-
-        System.out.println(Omega_5_);
+            System.out.println(repo);
+        }
 
     }
 
@@ -73,7 +77,7 @@ public class Hedgefund {
     }
 
     public void printStockValue(){
-        System.out.println(this.Balancesheet.phi);
+        System.out.println(this.balanceSheet.phi);
     }
 
     public HedgefundBehaviour getBehaviour(){
@@ -81,8 +85,15 @@ public class Hedgefund {
     }
 
     public double getTotalNewFunding(){
-        return Omega_1_+Omega_2_+Omega_3_+Omega_4_+Omega_5_;
-    }
 
+        double sum = 0;
+        double[] newFundingColumn = newFunding.transpose().getArray()[id];
+
+        for (double repo : newFundingColumn) {
+            sum += repo;
+        }
+
+        return sum;
+    }
 
 }

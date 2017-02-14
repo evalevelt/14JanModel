@@ -1,5 +1,7 @@
 package components;
 
+import Jama.Matrix;
+
 /**
  * Created by eva on 24/01/2017.
  */
@@ -17,16 +19,18 @@ public class Bank {
      double z;
     public double D_;
     double NO;
-    public int Def_1;
-    public int Def_2;
-    public int Def_3;
-    public int Def_4;
-    public int Def_5;
 
-    BankBalanceSheet Balancesheet;
+//    public Matrix repos;
+//    public Matrix newFunding;
+//    public double[] hedgefundDefaults;
+    public int id;
+
+
+    BankBalanceSheet balanceSheet;
     BankBehaviour Behaviour;
 
-    public Bank(String name){
+    public Bank(String name, int id){
+        this.id = id;
         this.name=name;
         this.D=1;
         this.B=0;
@@ -37,26 +41,31 @@ public class Bank {
         this.Behaviour=new BankBehaviour();
         this.Behaviour.bank=this;
         this.NO=0;
+//        this.repos=repos;
+//        this.newFunding=newFunding;
+//        this.hedgefundDefaults=hedgefundDefaults;
+        this.balanceSheet = new BankBalanceSheet(this);
+
     }
 
-    public void setBalancesheet(BankBalanceSheet Balancesheet){
-        this.Balancesheet=Balancesheet;
-        Balancesheet.bank=this;
-    }
+//    public void setBalanceSheet(BankBalanceSheet Balancesheet){
+//        this.balanceSheet =Balancesheet;
+//        Balancesheet.bank=this;
+//    }
 
-    public BankBalanceSheet getBalancesheet(){
-        return this.Balancesheet;
+    public BankBalanceSheet getBalanceSheet(){
+        return this.balanceSheet;
     }
 
     public void printBalanceSheet(){
-        System.out.println("Balancesheet "+this.name);
+        System.out.println("balanceSheet "+this.name);
         System.out.println("Assets:");
-        System.out.println("Matchbook Repo funding "+this.Balancesheet.getTotalRepo());
-        System.out.println("Stockvalue "+this.Balancesheet.phi*this.getBehaviour().market.S);
-        System.out.println("Cash "+this.Balancesheet.C);
+        System.out.println("Matchbook Repo funding "+this.balanceSheet.getTotalRepo());
+        System.out.println("Stockvalue "+this.balanceSheet.phi*this.getBehaviour().market.S);
+        System.out.println("Cash "+this.balanceSheet.C);
         System.out.println("Liabilities:");
-        System.out.println("Matchbook Repo funding "+this.Balancesheet.getTotalRepo());
-        System.out.println("General Liabilities "+this.Balancesheet.L);
+        System.out.println("Matchbook Repo funding "+this.balanceSheet.getTotalRepo());
+        System.out.println("General Liabilities "+this.balanceSheet.L);
         System.out.println("---------------------------------------------");
     }
 
@@ -65,7 +74,7 @@ public class Bank {
     }
 
     public void printStockAmount(){
-        System.out.println(this.Balancesheet.phi);
+        System.out.println(this.balanceSheet.phi);
     }
 
     public BankBehaviour getBehaviour(){

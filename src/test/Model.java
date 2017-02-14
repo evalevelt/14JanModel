@@ -1,5 +1,6 @@
 package test;
 
+import Jama.Matrix;
 import components.*;
 import sim.engine.SimState;
 import sim.engine.Steppable;
@@ -8,24 +9,35 @@ import sim.engine.Stoppable;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+
 /**
  * Created by eva on 24/01/2017.
  */
 public class Model extends SimState implements Steppable {
+
+    // PARAMETERS
+    int N_BANKS = 5; //NUMBER OF BANKS
+    int N_HEDGEFUNDS =100; //NUMBER OF HEDGEFUNDS
+    double sizeShock = 0.8; //INITIAL SHOCK TO ASSETS
+    double extra_HF = 1.02; //HOW MUCH MORE THAN COLLATERAL NEEDS DO HEDGEFUNDS START WITH
+    double extra_B=1; //HOW MUCH EXTRA STOCK DO BANKS START WITH
+
+
+
     private int nstep;
     public Stoppable scheduleRepeat;
     private ArrayList<Bank> banks;
     private ArrayList<Hedgefund> hedgefunds;
     public Market market;
+    public InfoExchange infoExchange;
     //this is the array in which we're going to store the equity in each timestep
     double equity[]=new double[100];
+    Matrix bankLiabilities;
 
-    int J = 4; //NUMBER OF BANKS
-    int I=3; //NUMBER OF HEDGEFUNDS
+
 
     //note, you need to change repos matrix and liabilities vector below when you change the number of institutions
 
-    double sizeShock = 0.4;
     //this is the factor by which we initially reduce assets. with current settings this has to be quite small to get any action happening
     //0.5 gives actual defaults among hedgefunds
     //0.4 also gives defaults among banks
@@ -45,23 +57,27 @@ public class Model extends SimState implements Steppable {
         //one market is created with initial price 1, every bank and hedgefunds "signs up" to this market later
         market = new Market(1.0);
 
+        infoExchange = new InfoExchange(N_BANKS, N_HEDGEFUNDS);
+
         //here you input the matrix of repo contracts, row gives bank, column hedgefund.
-        // there's currently capacity for 5 banks, 5 hedgefunds, leave 0 if you're working with less.
-        double[][] repos={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{1,3,9,0,0},{0,0,0,0,0}};
+        //double[][] reposArray={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{1,3,9,0,0},{0,0,0,0,0}};
+        infoExchange.setrepos(Matrix.random(N_BANKS, N_HEDGEFUNDS));
+        assert(infoExchange.repos.getRowDimension()==N_BANKS);
+        assert(infoExchange.repos.getColumnDimension()==N_HEDGEFUNDS);
+
 
         //these are the generalised liabilities you assign to each bank.
-        double [] bankliabilities={40,25,1,19,0};
+        //double [] bankliabilities={40,25,1,19,0};
+        bankLiabilities=Matrix.random(N_BANKS,1);
 
         //with the repos and bankliabilities, we calculate the whole rest of the balancesheets
 
        //extra is the factor by which you multiply the collateral needs for the repo to get the amount of stock
         //you want the hedgefund to hold initially
-        double extra_HF = 1.5;
 
         //for the bank, cash is calculated based on the LCR target ratio and the liabilities
         //stock is then calculated so that the overall Leverage ratio is on target, except this gives a very
         //small amount of stock in current configuration. you may therefore want to have some extra here too
-        double extra_B=1;
 
 
         //now we initialise the banks and the hedgefunds. They have a name, balancesheet, behaviour and market.
@@ -72,30 +88,26 @@ public class Model extends SimState implements Steppable {
         System.out.println("---------------------------------------");
 
         banks = new ArrayList<>();
-        for (int j = 1; j < J+1; j++) {
-            BankBalanceSheet sheet = new BankBalanceSheet();
-            Bank bank = new Bank("Bank " + j);
-            bank.setBalancesheet(sheet);
+        for (int j = 0; j < N_BANKS; j++) {
+            Bank bank = new Bank("Bank " + j, j); //todo Fix the naming of the banks
             bank.getBehaviour().setMarket(market);
-            bank.getBalancesheet().addRepo(repos[j-1][0], repos[j-1][1], repos[j-1][2], repos[j-1][3], repos[j-1][4]);
-            bank.getBalancesheet().addLiability(bankliabilities[j-1]);
+            bank.getBehaviour().setInfoExchange(infoExchange);
+            bank.getBalanceSheet().addLiability(bankLiabilities.get(j,0));
             //NO is the constant denominator in the LCR ratio, which we set once here based on liabilities
             bank.getBehaviour().setNO();
-            bank.getBalancesheet().addCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
-            double K = ((bank.getBehaviour().lambda_T-1)*bank.getBalancesheet().getCash()+bank.getBehaviour().lambda_T*bank.getBalancesheet().getTotalRepo()+bank.getBalancesheet().getLiability())/(market.S*(1-bank.getBehaviour().lambda_T));
-            bank.getBalancesheet().addStocks(K*extra_B);
+            bank.getBalanceSheet().addCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
+            double K = ((bank.getBehaviour().lambda_T-1)*bank.getBalanceSheet().getCash()+bank.getBehaviour().lambda_T*bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().getLiability())/(market.S*(1-bank.getBehaviour().lambda_T));
+            bank.getBalanceSheet().addStocks(K*extra_B);
 
             banks.add(bank);
             bank.printBalanceSheet();
         }
 
         hedgefunds = new ArrayList<>();
-        for (int i = 1; i < I+1; i++) {
-            HedgefundBalanceSheet sheet = new HedgefundBalanceSheet();
-            Hedgefund hedgefund = new Hedgefund("Hedgefund " + i);
-            hedgefund.setBalancesheet(sheet);
+        for (int i = 0; i < N_HEDGEFUNDS; i++) {
+            Hedgefund hedgefund = new Hedgefund("Hedgefund " + i,i); //todo fix naming
             hedgefund.getBehaviour().setMarket(market);
-            hedgefund.getBalancesheet().addRepo(repos[0][i-1], repos[1][i-1], repos[2][i-1], repos[3][i-1], repos[4][i-1]);
+            hedgefund.getBehaviour().setInfoExchange(infoExchange);
             hedgefund.getBalancesheet().addStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
             hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.3);
             hedgefunds.add(hedgefund);
@@ -107,10 +119,10 @@ public class Model extends SimState implements Steppable {
 
         //now we store current equity
         double equity_1=0;
-        for(int j=0;j<J;j++){
-            equity_1=banks.get(j).getBalancesheet().calculateEquity()+equity_1;
+        for(int j = 0; j< N_BANKS; j++){
+            equity_1=banks.get(j).getBalanceSheet().calculateEquity()+equity_1;
         }
-        for(int i=0; i<I; i++){
+        for(int i = 0; i< N_HEDGEFUNDS; i++){
             equity_1=hedgefunds.get(i).getBalancesheet().calculateEquity()+equity_1;
         }
 
@@ -132,10 +144,10 @@ public class Model extends SimState implements Steppable {
 
         //we store the equity at the start of the timestep
         double equity_step=0;
-        for(int j=0;j<J;j++){
-            equity_step=banks.get(j).getBalancesheet().calculateEquity()+equity_step;
+        for(int j = 0; j< N_BANKS; j++){
+            equity_step=banks.get(j).getBalanceSheet().calculateEquity()+equity_step;
         }
-        for(int i=0; i<I; i++){
+        for(int i = 0; i< N_HEDGEFUNDS; i++){
             equity_step=hedgefunds.get(i).getBalancesheet().calculateEquity()+equity_step;
         }
 
@@ -156,11 +168,15 @@ public class Model extends SimState implements Steppable {
         System.out.println("ACTIONS TAKEN:");
         System.out.println("---------------------------------------");
 
-        for (int j = 0; j < J; j++) {
+        for (int j = 0; j < N_BANKS; j++) {
             banks.get(j).getBehaviour().checkSolvency();
             banks.get(j).getBehaviour().checkLeverage();
             banks.get(j).getBehaviour().deleverRule2();
             banks.get(j).getBehaviour().checkLCR();
+
+            for(int i=0;i<N_HEDGEFUNDS;i++){
+                banks.get(j).getBehaviour().giveFundingUpdate(i);
+            }
 
         }
 
@@ -169,13 +185,11 @@ public class Model extends SimState implements Steppable {
 
         //these are the actions for the hedgefund in a timestep, they act after the banks.
         //it starts with the banks informing the hedgefunds of any reduction of repo-funding
-        for(int i=0; i<I; i++){
-            for (int j=0; j<J; j++) {
-                hedgefunds.get(i).getBehaviour().getFundingUpdate(j+1, banks.get(j).getBehaviour().giveFundingUpdate(i+1));
-            }
+        for(int i = 0; i< N_HEDGEFUNDS; i++){
             hedgefunds.get(i).getBehaviour().checkSolvency();
             hedgefunds.get(i).getBehaviour().repayFunding();
             hedgefunds.get(i).getBehaviour().marginCall();
+            hedgefunds.get(i).getBehaviour().giveDefaults();
 
             //here the hedgefunds tell the banks their orders
             Order=Order+hedgefunds.get(i).getBehaviour().placeMarketOrder();
@@ -183,7 +197,7 @@ public class Model extends SimState implements Steppable {
 
             //the hedgefunds ONLY NOW update their actual balancesheets, once everything has been decided and calculated.
             //until then, variables in the object "Hedgefund" itself store decisions that have been made
-            hedgefunds.get(i).getBehaviour().updateBalanceSheet();
+            hedgefunds.get(i).getBehaviour().updateBalanceSheet(N_BANKS);
 
 
         }
@@ -199,20 +213,17 @@ public class Model extends SimState implements Steppable {
         //NOTE THIS NOW ONLY WORKS IF THERE'S THE SAME NUMBER OF HEDGEFUNDS AND BANKS
 
 
-        for (int j=0; j<J;j++){
-            for (int i=0; i<I; i++) {
-                banks.get(j).getBehaviour().getDefaultInfo(i+1, hedgefunds.get(i).D*hedgefunds.get(i).D_);
+        for (int j = 0; j< N_BANKS; j++){
 
-            }
 
             //now the bank has also completed all its actions and can place its final order and update its actual Balancesheet
             Order=Order+banks.get(j).getBehaviour().placeMarketOrder();
 
-            banks.get(j).getBehaviour().updateBalancesheet();
+            banks.get(j).getBehaviour().updateBalancesheet(N_HEDGEFUNDS);
             banks.get(j).printBalanceSheet();
         }
 
-        for (int i=0; i<I; i++) {
+        for (int i = 0; i< N_HEDGEFUNDS; i++) {
             hedgefunds.get(i).printBalanceSheet();
         }
 
@@ -220,11 +231,11 @@ public class Model extends SimState implements Steppable {
         //bank objects that decide whether someone defaulted or delevered. if k=0, nothing happened this step and the simulation ends.
 
         double k=0;
-        for(int j=0;j<J;j++){
+        for(int j = 0; j< N_BANKS; j++){
             k=banks.get(j).B+k;
             k=(1-banks.get(j).D)+k;
         }
-        for(int i=0; i<I; i++){
+        for(int i = 0; i< N_HEDGEFUNDS; i++){
             k=(1-hedgefunds.get(i).D)+k;
         }
 
@@ -238,10 +249,10 @@ public class Model extends SimState implements Steppable {
             simstate.kill();
             //now we want to store the final equity
             double equity_final=0;
-            for(int j=0;j<J;j++){
-                equity_final=banks.get(j).getBalancesheet().calculateEquity()+equity_final;
+            for(int j = 0; j< N_BANKS; j++){
+                equity_final=banks.get(j).getBalanceSheet().calculateEquity()+equity_final;
             }
-            for(int i=0; i<I; i++){
+            for(int i = 0; i< N_HEDGEFUNDS; i++){
                 equity_final=hedgefunds.get(i).getBalancesheet().calculateEquity()+equity_final;
             }
 
@@ -261,14 +272,14 @@ public class Model extends SimState implements Steppable {
             //we also find how many banks have defaulted
 
             double Defaults_banks=0;
-            for(int j=0;j<J;j++){
-                if(banks.get(j).getBalancesheet().calculateEquity()==0){
+            for(int j = 0; j< N_BANKS; j++){
+                if(banks.get(j).getBalanceSheet().calculateEquity()==0){
                     Defaults_banks++;
                 };
             }
 
             double Defaults_hedgefunds=0;
-            for(int i=0;i<I;i++){
+            for(int i = 0; i< N_HEDGEFUNDS; i++){
                 if(hedgefunds.get(i).getBalancesheet().calculateEquity()==0){
                     Defaults_hedgefunds++;
                 };
