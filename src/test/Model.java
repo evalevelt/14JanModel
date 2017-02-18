@@ -16,11 +16,11 @@ import java.util.Arrays;
 public class Model extends SimState implements Steppable {
 
     // PARAMETERS
-    int N_BANKS = 5; //NUMBER OF BANKS
-    int N_HEDGEFUNDS =100; //NUMBER OF HEDGEFUNDS
-    double sizeShock = 0.8; //INITIAL SHOCK TO ASSETS
-    double extra_HF = 1.02; //HOW MUCH MORE THAN COLLATERAL NEEDS DO HEDGEFUNDS START WITH
-    double extra_B=1; //HOW MUCH EXTRA STOCK DO BANKS START WITH
+    int N_BANKS = 2; //NUMBER OF BANKS
+    int N_HEDGEFUNDS =3; //NUMBER OF HEDGEFUNDS
+    double sizeShock = 0.9; //INITIAL SHOCK TO ASSETS
+    double extra_HF = 1.00; //HOW MUCH MORE THAN COLLATERAL NEEDS DO HEDGEFUNDS START WITH
+    double extra_B=1.05; //HOW MUCH EXTRA STOCK DO BANKS START WITH
 
 
 
@@ -60,7 +60,7 @@ public class Model extends SimState implements Steppable {
         infoExchange = new InfoExchange(N_BANKS, N_HEDGEFUNDS);
 
         //here you input the matrix of repo contracts, row gives bank, column hedgefund.
-        //double[][] reposArray={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{1,3,9,0,0},{0,0,0,0,0}};
+//        double[][] reposArray={{5,2,3,0,0},{1,3,2,0,0},{4,8,4,0,0},{1,3,9,0,0},{0,0,0,0,0}};
         infoExchange.setrepos(Matrix.random(N_BANKS, N_HEDGEFUNDS));
         assert(infoExchange.repos.getRowDimension()==N_BANKS);
         assert(infoExchange.repos.getColumnDimension()==N_HEDGEFUNDS);
@@ -109,7 +109,7 @@ public class Model extends SimState implements Steppable {
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
             hedgefund.getBalancesheet().addStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
-            hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.3);
+            hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.1);
             hedgefunds.add(hedgefund);
             hedgefund.printBalanceSheet();
 
@@ -169,14 +169,11 @@ public class Model extends SimState implements Steppable {
         System.out.println("---------------------------------------");
 
         for (int j = 0; j < N_BANKS; j++) {
-            banks.get(j).getBehaviour().checkSolvency();
-            banks.get(j).getBehaviour().checkLeverage();
+            banks.get(j).getBehaviour().checkMinLev();
+            banks.get(j).getBehaviour().checkBufLev();
             banks.get(j).getBehaviour().deleverRule2();
-            banks.get(j).getBehaviour().checkLCR();
+            banks.get(j).getBehaviour().giveFundingUpdate();
 
-            for(int i=0;i<N_HEDGEFUNDS;i++){
-                banks.get(j).getBehaviour().giveFundingUpdate(i);
-            }
 
         }
 
@@ -185,11 +182,22 @@ public class Model extends SimState implements Steppable {
 
         //these are the actions for the hedgefund in a timestep, they act after the banks.
         //it starts with the banks informing the hedgefunds of any reduction of repo-funding
-        for(int i = 0; i< N_HEDGEFUNDS; i++){
-            hedgefunds.get(i).getBehaviour().checkSolvency();
+        for(int i = 0; i< N_HEDGEFUNDS; i++) {
+            hedgefunds.get(i).getBehaviour().checkDefault();
             hedgefunds.get(i).getBehaviour().repayFunding();
             hedgefunds.get(i).getBehaviour().marginCall();
-            hedgefunds.get(i).getBehaviour().giveDefaults();
+            hedgefunds.get(i).getBehaviour().giveUpdate();
+
+
+        }
+
+        for(int j=0; j<N_BANKS; j++){
+            banks.get(j).getBehaviour().checkDefault();
+            banks.get(j).getBehaviour().payBack2();
+        }
+
+
+        for(int i=0; i<N_HEDGEFUNDS; i++){
 
             //here the hedgefunds tell the banks their orders
             Order=Order+hedgefunds.get(i).getBehaviour().placeMarketOrder();
@@ -197,7 +205,7 @@ public class Model extends SimState implements Steppable {
 
             //the hedgefunds ONLY NOW update their actual balancesheets, once everything has been decided and calculated.
             //until then, variables in the object "Hedgefund" itself store decisions that have been made
-            hedgefunds.get(i).getBehaviour().updateBalanceSheet(N_BANKS);
+            hedgefunds.get(i).getBehaviour().updateBalanceSheet();
 
 
         }
@@ -219,7 +227,7 @@ public class Model extends SimState implements Steppable {
             //now the bank has also completed all its actions and can place its final order and update its actual Balancesheet
             Order=Order+banks.get(j).getBehaviour().placeMarketOrder();
 
-            banks.get(j).getBehaviour().updateBalancesheet(N_HEDGEFUNDS);
+            banks.get(j).getBehaviour().updateBalancesheet();
             banks.get(j).printBalanceSheet();
         }
 

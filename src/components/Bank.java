@@ -17,6 +17,8 @@ public class Bank {
      double x;
      double y;
      double z;
+     double y_;
+     double z_;
     public double D_;
     double NO;
 
@@ -37,13 +39,12 @@ public class Bank {
         this.x=0;
         this.y=0;
         this.z=0;
+        this.y_=0;
+        this.z_=0;
         this.D_=1;
         this.Behaviour=new BankBehaviour();
         this.Behaviour.bank=this;
         this.NO=0;
-//        this.repos=repos;
-//        this.newFunding=newFunding;
-//        this.hedgefundDefaults=hedgefundDefaults;
         this.balanceSheet = new BankBalanceSheet(this);
 
     }

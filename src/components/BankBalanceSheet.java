@@ -51,7 +51,7 @@ public class BankBalanceSheet {
     public double getTotalRepo(){
 
         double sum = 0;
-        double[] reposRow = bank.repos.getArray()[bank.id];
+        double[] reposRow = bank.getBehaviour().infoExchange.repos.getArray()[bank.id];
 
         for (double repo : reposRow) {
             sum += repo;
@@ -66,5 +66,9 @@ public class BankBalanceSheet {
 
     public void printBank(){
         System.out.println(this.bank.name);
+    }
+
+    public double totalAssets(){
+        return getTotalRepo()+C+phi*bank.getBehaviour().market.S;
     }
 }

@@ -10,25 +10,50 @@ public class HedgefundBehaviour {
     public double alpha;
 
 
-    //first the hedgefund stores the information the bank passes on about changes in funding, it does this in the Hedgefund object
-//    public void getFundingUpdate(int i, double newfunding){
-//        if(i==1){this.hedgefund.Omega_1_=newfunding;}
-//        else  if(i==2){this.hedgefund.Omega_2_=newfunding;}
-//        else if(i==3){this.hedgefund.Omega_3_=newfunding;}
-//        else if(i==4){this.hedgefund.Omega_4_=newfunding;}
-//        else if(i==5){this.hedgefund.Omega_5_=newfunding;}
-//        else{System.out.println("there is no bank w this number"+i);}
-//
-//    }
+    //these functions find the total new funding and the amount that is going to have to be paid back. totalnewfunding is here, total funding
+    //in balancesheet because total funding is already marked on the BS and new funding is not
+
+    public double getTotalNewFunding(){
+
+        double sum = 0;
+        double[] newFundingColumn = infoExchange.newFunding.transpose().getArray()[hedgefund.id];
+
+        for (double repo : newFundingColumn) {
+            sum += repo;
+        }
+
+        return sum;
+    }
+
+    public double findPayBack(){
+        return undefaultedDebt()-getTotalNewFunding();
+    }
+
+    public double undefaultedDebt(){
+        int N_BANKS=infoExchange.repos.getRowDimension();
+
+        double sum=0;
+        int j;
+        for(j=0; j<N_BANKS; j++){
+            sum=infoExchange.repos.get(j, hedgefund.id)*infoExchange.bankDefaults1[j]+sum;
+        }
+        return sum;
+    }
+
+    public double returnLeverage(){
+        double equity = hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C- undefaultedDebt();
+        double lambda = equity/(this.hedgefund.balanceSheet.phi*market.S+this.hedgefund.balanceSheet.C-findPayBack());
+        return lambda;
+    }
 
 
-    //now it checks whether it is still solvent with the changed funding and changed market price, if it's newly insolvent this step this
-    // is stored in D in the hedgefund object
-    public void checkSolvency(){
-        if(this.hedgefund.getBalancesheet().phi*market.S+hedgefund.getBalancesheet().C>=this.hedgefund.getTotalNewFunding()){
-            this.hedgefund.D=1;}
-            else{this.hedgefund.D=0;
+    public void checkDefault(){
+        System.out.println("I am "+hedgefund.name+"and im checking for default. I've found leverage"+returnLeverage());
+        if(returnLeverage()>=alpha){
+            hedgefund.D=1;}
+            else{hedgefund.D=0;
             System.out.println("I am "+hedgefund.name+" and I have just become insolvent");}
+        infoExchange.hedgefundDefaults[hedgefund.id]=hedgefund.D;
 
 
     }
@@ -37,60 +62,59 @@ public class HedgefundBehaviour {
     //it decides how much of this it will pay back using cash and how much by selling stocks. these amounts are stored in the
     //temporary variables in the hedgefund object, y and z
     public void repayFunding(){
-        double deltaFunding=this.hedgefund.getBalancesheet().getTotalFunding()-this.hedgefund.getTotalNewFunding();
-        if(deltaFunding>0){System.out.println("I am "+hedgefund.name+" and I am repaying "+deltaFunding);}
-        this.hedgefund.z=Math.min(this.hedgefund.getBalancesheet().getCash(), this.hedgefund.D*deltaFunding);
-        this.hedgefund.y=Math.min(this.hedgefund.D*deltaFunding-this.hedgefund.z, this.hedgefund.getBalancesheet().getPhi()*market.S);
+        if(findPayBack()>0){System.out.println("I am "+hedgefund.name+" and I am repaying "+findPayBack());}
+        hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), hedgefund.D*findPayBack());
+       hedgefund.y= hedgefund.D*findPayBack()-hedgefund.z;
     }
 
     //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
     //to buy. if it does not have enough cash to buy assets for its collateral needs, it defaults. all this info is stored in variables in
     //the hedgefund object.
     public void marginCall(){
-        if(this.hedgefund.getBalancesheet().getPhi()*market.S+this.hedgefund.getBalancesheet().getCash()-this.hedgefund.y-this.hedgefund.z>=this.hedgefund.getTotalNewFunding()/(1-alpha)){
-            this.hedgefund.D_=1;}
-            else if (this.hedgefund.D==0){
-            this.hedgefund.D_=1;
-        }
-
-            else{this.hedgefund.D_=0;
-            System.out.println("I am hedgefund "+hedgefund.name+"and I am defaulting due to Margin Call");
-        }
-
-        this.hedgefund.MC=this.hedgefund.D*this.hedgefund.D_*Math.max(this.hedgefund.getTotalNewFunding()/(1-alpha)-this.hedgefund.getBalancesheet().getPhi()*market.S+this.hedgefund.y,0);
+        this.hedgefund.MC=this.hedgefund.D*Math.max((undefaultedDebt()-findPayBack())/(1-alpha)-hedgefund.getBalancesheet().phi*market.S,0);
         if(hedgefund.MC>0){System.out.println("I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
     }
 
-    public double collateralNeeded(){
-        return this.hedgefund.getTotalNewFunding()/(1-alpha);
+    public void giveUpdate(){
+        int N_BANKS=infoExchange.repos.getRowDimension();
+
+        int j;
+        for(j=0; j<N_BANKS; j++){
+            infoExchange.repayments.set(j, hedgefund.id, (infoExchange.repos.get(j, hedgefund.id)/hedgefund.getBalancesheet().getTotalFunding())*(hedgefund.getBalancesheet().phi*market.S-hedgefund.getBalancesheet().C)*(1-hedgefund.D));
+        }
+
     }
+
 
    //finally it collects its orders and updates the balancesheet with all the temporary information stored in the hedgefund object variables.
     public double placeMarketOrder(){
         //NEEDS TO HAPPEN BEFORE UPDATE BALANCESHEET
-        double Order=(this.hedgefund.MC-this.hedgefund.y)*this.hedgefund.D*this.hedgefund.D_-this.hedgefund.getBalancesheet().phi*market.S*(1-this.hedgefund.D)*(1-this.hedgefund.D_);
+        double Order=(this.hedgefund.MC-this.hedgefund.y)*this.hedgefund.D-this.hedgefund.getBalancesheet().phi*market.S*(1-this.hedgefund.D);
         return Order;
     }
 
- public void updateBalanceSheet(int N_BANKS){
-       hedgefund.getBalancesheet().phi=(hedgefund.getBalancesheet().phi+(hedgefund.MC-hedgefund.y)/hedgefund.Behaviour.market.S)*hedgefund.D*hedgefund.D_;
-        hedgefund.getBalancesheet().C=(hedgefund.getBalancesheet().C-hedgefund.z-hedgefund.MC)*hedgefund.D*hedgefund.D_;
+ public void updateBalanceSheet(){
+     int N_BANKS=infoExchange.repos.getRowDimension();
+
+
+     hedgefund.getBalancesheet().phi=(hedgefund.getBalancesheet().phi+(hedgefund.MC-hedgefund.y)/hedgefund.Behaviour.market.S)*hedgefund.D;
+        hedgefund.getBalancesheet().C=(hedgefund.getBalancesheet().C-hedgefund.z-hedgefund.MC)*hedgefund.D;
         int j;
         for(j=0; j<N_BANKS;j++){
-            hedgefund.repos.set(j, hedgefund.id, hedgefund.newFunding.get(j,hedgefund.id)*hedgefund.D*hedgefund.D_);
+            infoExchange.repos.set(j, hedgefund.id, infoExchange.newFunding.get(j,hedgefund.id)*infoExchange.bankDefaults2[j]*hedgefund.D);
         }
 
   }
 
-  public void giveDefaults(){
-     hedgefund.hedgefundDefaults[hedgefund.id]=hedgefund.D*hedgefund.D_;
-  }
+//  public void giveDefaults(){
+//     hedgefund.hedgefundDefaults[hedgefund.id]=hedgefund.D*hedgefund.D_;
+//  }
 
     //these are administrative
 
     public HedgefundBehaviour(){
         this.hedgefund=null;
-        this.alpha=0.001;
+        this.alpha=0.25;
     }
 
     public void printBank(){

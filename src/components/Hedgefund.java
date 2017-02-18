@@ -20,11 +20,11 @@ public class Hedgefund {
    public double z;
    public double MC;
     public double alpha;
-//    public Matrix repos;
-//    public Matrix newFunding;
-//    public double[] hedgefundDefaults;
+    public double[] deltaFunding;
+
+
     public int id;
-    private HedgefundBalanceSheet balanceSheet;
+    public HedgefundBalanceSheet balanceSheet;
 
     public Hedgefund(String name, int id){
         this.name=name;
@@ -63,7 +63,7 @@ public class Hedgefund {
     }
 
     public void printNewFunding(){
-        double[] newFundingColumn = newFunding.transpose().getArray()[id];
+        double[] newFundingColumn = getBehaviour().infoExchange.newFunding.transpose().getArray()[id];
 
         for (double repo : newFundingColumn) {
 
@@ -84,16 +84,6 @@ public class Hedgefund {
         return this.Behaviour;
     }
 
-    public double getTotalNewFunding(){
 
-        double sum = 0;
-        double[] newFundingColumn = newFunding.transpose().getArray()[id];
-
-        for (double repo : newFundingColumn) {
-            sum += repo;
-        }
-
-        return sum;
-    }
 
 }
