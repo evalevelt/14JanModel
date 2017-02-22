@@ -7,27 +7,26 @@ import Jama.Matrix;
  */
 public class HedgefundBalanceSheet {
 
-    //for now we only have capacity for 5 hedgefunds and 5 banks. Omega_1 as a variable for a hedgefund means the amount of repo it receives
-    //from bank 1. (ideally this system changes because it's very ugly and has limited capacity).
+    //these variables are basically the balancesheet items. they are all in pounds EXCEPT phi, which is a number of stocks
+    //repos are stored in infoExchange because the values need to be shared with banks. getTotalRepo reads these.
 
     double phi;
-
     double C;
     Hedgefund hedgefund;
 
     public HedgefundBalanceSheet(Hedgefund hedgefund){
         this.phi=0;
-        this.hedgefund=null;
         this.C=0;
-
         this.hedgefund = hedgefund;
-
     }
 
     public void addStocks(double newStocks){
         phi=phi+newStocks;
     }
 
+    public void addCash(double Cash){
+        this.C=C+Cash;
+    }
 
     public double getTotalFunding(){
 
@@ -38,15 +37,11 @@ public class HedgefundBalanceSheet {
             sum += repo;
         }
 
-        return sum;
+        return sum*(1-hedgefund.DEFAULTED);
     }
 
     public double getPhi(){
         return phi;
-    }
-
-    public void addCash(double Cash){
-        this.C=C+Cash;
     }
 
     public double getCash(){return this.C;}
@@ -55,8 +50,13 @@ public class HedgefundBalanceSheet {
         return (phi*hedgefund.getBehaviour().market.S+C)-getTotalFunding();
     }
 
-
-    public void printHedgefund(){
-        System.out.println(this.hedgefund.name);
+    public void printBalanceSheet(Hedgefund hedgefund){
+        System.out.println("balanceSheet "+ hedgefund.name);
+        System.out.println("Assets:");
+        System.out.println("Stockvalue "+ phi* hedgefund.getBehaviour().market.S);
+        System.out.println("Cash "+ C);
+        System.out.println("Liabilities:");
+        System.out.println("Repo funding "+ getTotalFunding());
+        System.out.println("---------------------------------------------");
     }
 }

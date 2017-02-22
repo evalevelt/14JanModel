@@ -6,13 +6,15 @@ package components;
 public class Market {
    public double S;
    double Depth;
+   double alpha;
 
    //S is the price of the asset, linear impact function. market depth parameter needs to be thoroughly researched, this is
     //a completely random guess.
 
-    public Market(double S){
+    public Market(double S, double alpha){
         this.S=S;
-        this.Depth=100;
+        this.alpha=alpha;
+        this.Depth=10000000;
     }
 
     public void updateMarket(double q){

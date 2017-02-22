@@ -8,32 +8,24 @@ public class BankBehaviour {
     Market market;
     InfoExchange infoExchange;
    public double lambda_M = 0.03;
-   public double lambda_B = 0.04;
-   public double lambda_T=0.05;
+   public double lambda_B = 0.05;
+   public double lambda_T=0.07;
    public double kappa_min=0.9;
     public double kappa_T=1.1;
-    double beta=0.08;
+    double beta=0.10;
 
 
 
 //these are all actions that are taken in a timestep
 
-
-//    //here the bank checks if its just become insolvent, it updates D in the bank object to reflect whether that has happened this timestep
-//    public void checkSolvency(){
-//        if(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()>=this.bank.balanceSheet.getLiability()){
-//            this.bank.D=1;
-//        } else {this.bank.D=0;
-//        System.out.println("I am "+bank.name+" and I have just become insolvent");}
-//    }
-
     //these two functions find the leverage and check if its below the minimum, triggering default
     public double returnLeverage(){
-        double lambda = (this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()-this.bank.balanceSheet.getLiability())/(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getTotalRepo()+this.bank.balanceSheet.getCash());
+        double lambda = (this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()-this.bank.balanceSheet.getLiability())/(this.bank.balanceSheet.totalAssets());
         return lambda;
     }
 
     public void checkMinLev(){
+        System.out.println("My leverage is" + returnLeverage());
         if(returnLeverage()<lambda_M){
             this.bank.D=0;
             System.out.println("I am "+bank.name+" and I am defaulting by dropping below minimum leverage");
@@ -46,6 +38,7 @@ public class BankBehaviour {
     //this function checks whether the bank has to delever
 
     public void checkBufLev(){
+
         if(lambda_M<=returnLeverage() && returnLeverage()<lambda_B){
             this.bank.B=1;
             System.out.println("I am "+bank.name+"and I am delevering");
@@ -64,6 +57,7 @@ public class BankBehaviour {
     }
 
     public void deleverRule1(){
+
         double Gamma = amountToDelever();
         this.bank.x=(bank.balanceSheet.getTotalRepo()/bank.balanceSheet.totalAssets())*Gamma;
         this.bank.y=((bank.balanceSheet.phi*market.S)/bank.balanceSheet.totalAssets())*Gamma;
@@ -76,23 +70,13 @@ public class BankBehaviour {
         if(bank.x>0){System.out.println("I am " +bank.name+" and I am reducing repo funding");}
         this.bank.y=Math.min(Gamma-this.bank.x, this.bank.balanceSheet.phi*market.S);
         if(bank.y>0){System.out.println("I am " +bank.name+" and I am selling assets to delever");}
-        double Gamma_=(lambda_M*(this.bank.balanceSheet.getTotalRepo())+this.bank.balanceSheet.getLiability()+(lambda_M-1)*(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()))*this.bank.B/lambda_M;
-        this.bank.z=Math.max(Math.min(Gamma_-this.bank.x-this.bank.y, this.bank.balanceSheet.getCash()),0);
+        double Gamma_=(lambda_B*(this.bank.balanceSheet.getTotalRepo())+this.bank.balanceSheet.getLiability()+(lambda_B-1)*(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()))*this.bank.B/lambda_B;
+        this.bank.z=Math.min(Math.max(Gamma_-bank.x-bank.y,0), bank.balanceSheet.C);
     }
 
-    //THIS FUNCTION IS NO LONGER IN USE
-//    //should you be using the LCR, this function checks if delevering hasnt brought you to breach LCR.
-//    // it updates D_ in the bank object to reflect whether that has happened this timest
-//    public void checkLCR(){
-//       if(this.bank.balanceSheet.getCash()-this.bank.z>=kappa_min*this.bank.NO){
-//           this.bank.D_=1;}
-//           else{this.bank.D_=0;
-//           System.out.println("I am "+bank.name+" and I have just defaulted by breaching LCR");}
-//
-//       }
 
 
-    //these functions have the purpose of communicating with hedgefunds.
+    //these functions have the purpose of communicating with hedgefunds about updated funding.
     public void giveFundingUpdate(){
         int N_HEDGEFUNDS=infoExchange.repos.getColumnDimension();
         double factor =0;
@@ -100,26 +84,35 @@ public class BankBehaviour {
                 factor=1-(this.bank.x/this.bank.getBalanceSheet().getTotalRepo());}
                 else{factor=0;}
 
-         int i;
-         for(i=0; i<N_HEDGEFUNDS; i++){
-             infoExchange.newFunding.set(bank.id, i, bank.D*factor*infoExchange.repos.get(bank.id,i));
+         for(int i=0; i<N_HEDGEFUNDS; i++){
+             infoExchange.newFunding.set(bank.id, i, factor*infoExchange.repos.get(bank.id,i));
          }
     }
 
+    //now it's time for the hedgefunds to act, until they inform banks of their defaults.
+
+    //this is how much THE BANK has to add to pay back the cashprovider
     public double findTotalPayback(){
         double totalPayBack=0;
 
         double[] payBackColumn = infoExchange.repayments.getArray()[bank.id];
+        double[] reposRow = bank.getBehaviour().infoExchange.repos.getArray()[bank.id];
 
-        for (double counter : payBackColumn) {
-            totalPayBack += counter;
+        for (int i=0; i<payBackColumn.length;i++){
+            totalPayBack += Math.max((reposRow[i]-payBackColumn[i])*(1-infoExchange.hedgefundDefaults[i]),0);
         }
+
+        if (totalPayBack > 0) {
+
+
+        System.out.println("bank"+bank.id+"has to cough up"+totalPayBack+"for the cashprovider");}
+
         return totalPayBack;
 
     }
 
     public void checkDefault(){
-        if(bank.getBalanceSheet().phi*market.S+bank.getBalanceSheet().C<findTotalPayback()){
+        if(bank.getBalanceSheet().phi*market.S+bank.getBalanceSheet().C<findTotalPayback()&&this.bank.D==1){
             this.bank.D_ = 0;
             System.out.println("I am " + bank.name + " and I am defaulting by dropping below minimum leverage");}
             else {this.bank.D_=1;}
@@ -139,6 +132,7 @@ public class BankBehaviour {
     public void payBack2(){
         bank.y_=Math.min(findTotalPayback(),bank.balanceSheet.phi*market.S);
         bank.z_=Math.min(findTotalPayback()-bank.y_, bank.balanceSheet.C);
+
     }
 
 
@@ -146,6 +140,8 @@ public class BankBehaviour {
     //the actual balancesheet at the end of the timestep.
     public double placeMarketOrder(){
         //NEEDS TO HAPPEN BEFORE UPDATE BALANCESHEET
+
+
         double Order=-(this.bank.y_+this.bank.y)*this.bank.D*this.bank.D_-this.bank.balanceSheet.phi*market.S*(1-this.bank.D)-this.bank.balanceSheet.phi*market.S*(1-this.bank.D_);
         return Order;
     }
@@ -153,35 +149,30 @@ public class BankBehaviour {
     public void updateBalancesheet(){
         int N_HEDGEFUNDS=infoExchange.repos.getColumnDimension();
 
-        double totRepo=giveOldTotalRepo();
-//        double factor =0;
-//        if(totRepo>0){
-//            factor=1-(bank.x/totRepo);}
-//        else{factor=0;}
-
-        this.bank.balanceSheet.phi=(this.bank.balanceSheet.phi-this.bank.y-this.bank.y_/market.S)*this.bank.D_*this.bank.D;
+        this.bank.balanceSheet.phi=(this.bank.balanceSheet.phi-((this.bank.y+this.bank.y_)/market.S))*this.bank.D_*this.bank.D;
         this.bank.balanceSheet.C=(this.bank.balanceSheet.C-this.bank.z-this.bank.z_)*this.bank.D*this.bank.D_;
 
         int i;
         for(i=0; i<N_HEDGEFUNDS;i++){
-            infoExchange.repos.set(bank.id, i, infoExchange.hedgefundDefaults[i]*bank.D_*infoExchange.newFunding.get(bank.id,i));
+            infoExchange.repos.set(bank.id, i, infoExchange.hedgefundDefaults[i]*infoExchange.newFunding.get(bank.id,i));
         }
         this.bank.balanceSheet.L=(this.bank.balanceSheet.L-bank.y-bank.z)*bank.D*bank.D_;
 
+        if(this.bank.D==0||this.bank.D_==0){
+            this.bank.DEFAULTED=1;
+        }
+
+        this.bank.B=0;
+        this.bank.D=1;
+        this.bank.D_=1;
+
 
     }
-
-    public double giveOldTotalRepo(){return this.bank.getBalanceSheet().getTotalRepo();}
-
 
     //these are "administrative" methods
 
     public BankBehaviour(){
         this.bank=null;
-    }
-
-    public void printBank(){
-        System.out.println(this.bank.name);
     }
 
     public void setMarket(Market market){

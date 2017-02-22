@@ -1,7 +1,5 @@
 package components;
 
-import Jama.Matrix;
-
 /**
  * Created by eva on 24/01/2017.
  */
@@ -12,24 +10,23 @@ public class Bank {
     //as some need to be accessed in the testcase, this should be improved.
 
     String name;
-   public int D;
-   public int B;
-     double x;
-     double y;
-     double z;
-     double y_;
-     double z_;
-    public double D_;
-    double NO;
-
-//    public Matrix repos;
-//    public Matrix newFunding;
-//    public double[] hedgefundDefaults;
     public int id;
 
-
-    BankBalanceSheet balanceSheet;
+    public BankBalanceSheet balanceSheet;
     BankBehaviour Behaviour;
+
+    public int D;
+    public double D_;
+    public double DEFAULTED;
+    public int B;
+    double x;
+    double y;
+    double z;
+    double y_;
+    double z_;
+    double NO;
+
+
 
     public Bank(String name, int id){
         this.id = id;
@@ -42,6 +39,7 @@ public class Bank {
         this.y_=0;
         this.z_=0;
         this.D_=1;
+        this.DEFAULTED=0;
         this.Behaviour=new BankBehaviour();
         this.Behaviour.bank=this;
         this.NO=0;
@@ -49,33 +47,9 @@ public class Bank {
 
     }
 
-//    public void setBalanceSheet(BankBalanceSheet Balancesheet){
-//        this.balanceSheet =Balancesheet;
-//        Balancesheet.bank=this;
-//    }
 
     public BankBalanceSheet getBalanceSheet(){
         return this.balanceSheet;
-    }
-
-    public void printBalanceSheet(){
-        System.out.println("balanceSheet "+this.name);
-        System.out.println("Assets:");
-        System.out.println("Matchbook Repo funding "+this.balanceSheet.getTotalRepo());
-        System.out.println("Stockvalue "+this.balanceSheet.phi*this.getBehaviour().market.S);
-        System.out.println("Cash "+this.balanceSheet.C);
-        System.out.println("Liabilities:");
-        System.out.println("Matchbook Repo funding "+this.balanceSheet.getTotalRepo());
-        System.out.println("General Liabilities "+this.balanceSheet.L);
-        System.out.println("---------------------------------------------");
-    }
-
-    public void printName(){
-        System.out.println(this.name);
-    }
-
-    public void printStockAmount(){
-        System.out.println(this.balanceSheet.phi);
     }
 
     public BankBehaviour getBehaviour(){
