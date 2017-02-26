@@ -131,7 +131,7 @@ public class CSVdealer {
 
     }
 
-    public void writeFile2(String fileName, Matrix shocks, Matrix allinfo) {
+    public void writeFile2(String fileName, Matrix shocks, Matrix allinfo, String[] WhichOnes) {
 
 
         FileWriter fileWriter = null;
@@ -156,6 +156,7 @@ public class CSVdealer {
                 for(int j=0; j<5; j++){
                     fileWriter.append(String.valueOf(allinfo.get(i,j)));
                     fileWriter.append(separator);}
+                fileWriter.append(WhichOnes[i]);
                 fileWriter.append(newline);
 
             }
@@ -182,6 +183,90 @@ public class CSVdealer {
         }
 
     }
+
+    public void writeFile3(String fileName, Matrix shocks, double []finalequity) {
+
+
+        FileWriter fileWriter = null;
+
+        try{
+            fileWriter = new FileWriter(fileName);
+            fileWriter.append("Shock");
+            fileWriter.append(separator);
+            fileWriter.append("Equities");
+            fileWriter.append(newline);
+            for(int i=0; i<shocks.getRowDimension(); i++){
+                fileWriter.append(String.valueOf(shocks.get(i,0)));
+                fileWriter.append(separator);
+                fileWriter.append(String.valueOf(finalequity[i]));
+                fileWriter.append(newline);
+
+            }
+
+
+
+
+
+
+        }catch(Exception e){
+            System.out.println("Error in CsvFileWriter !!!");
+            e.printStackTrace();
+        }finally{
+            try {
+                fileWriter.flush();
+                fileWriter.close();
+            } catch (IOException e) {
+                System.out.println("Error while flushing/closing fileWriter !!!");
+                e.printStackTrace();
+
+
+            }
+
+        }
+
+    }
+
+    public void writeFile4(String fileName, Matrix shocks, double [][] finalequity) {
+
+
+        FileWriter fileWriter = null;
+
+        try{fileWriter = new FileWriter(fileName);
+            fileWriter.append("Shock");
+            fileWriter.append(separator);
+            for(int k=0; k<shocks.getRowDimension();k++){
+                fileWriter.append(String.valueOf(shocks.get(k,1)));
+                fileWriter.append(separator);
+            }
+            fileWriter.append(newline);
+            for(int i=0; i<shocks.getRowDimension(); i++){
+                fileWriter.append(String.valueOf(shocks.get(i,0)));
+                fileWriter.append(separator);
+                for(int j=0; j<finalequity[i].length; j++){
+                    fileWriter.append(String.valueOf(finalequity[i][j]));
+                    fileWriter.append(separator);}
+                fileWriter.append(newline);
+            }
+
+        }catch(Exception e){
+            System.out.println("Error in CsvFileWriter !!!");
+            e.printStackTrace();
+        }finally{
+            try {
+                fileWriter.flush();
+                fileWriter.close();
+            } catch (IOException e) {
+                System.out.println("Error while flushing/closing fileWriter !!!");
+                e.printStackTrace();
+
+
+            }
+
+        }
+
+    }
+
+
 }
 
 

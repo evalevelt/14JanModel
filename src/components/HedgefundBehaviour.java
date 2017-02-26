@@ -29,35 +29,73 @@ public class HedgefundBehaviour {
         return hedgefund.balanceSheet.getTotalFunding()-getTotalNewFunding();
     }
 
+//    public double percentchangefunding(){ if(hedgefund.getBalancesheet().getTotalFunding()>0){return (getTotalNewFunding()-hedgefund.getBalancesheet().getTotalFunding())/hedgefund.getBalancesheet().getTotalFunding();}
+//    else{return 0;}}
+
+
+    public double findRedemptions(){
+        if(market.S<1){
+            return -(hedgefund.balanceSheet.calculateEquity()*((Math.exp(market.delta*market.eta)-1)/(Math.exp(1)-1)));}
+        else return 0;
+    }
+
     public double returnLeverage(){
-        double equity = hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C- hedgefund.balanceSheet.getTotalFunding();
+        double equity = Math.max(hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C- hedgefund.balanceSheet.getTotalFunding(),0);
         double lambda = equity/(this.hedgefund.balanceSheet.phi*market.S+this.hedgefund.balanceSheet.C-findPayBack());
         return lambda;
     }
 
+    //NOTE THIS IS NOW SET UP TO WORK ONLY BECAUSE WE GIVE THE HEDGEFUND ONLY ONE BANK!!!!!
+    public void checkCasesandAct(){
+        if((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>=getTotalNewFunding()/(1-market.alpha)){
+            hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), (findPayBack()+findRedemptions()));
+            hedgefund.y= (findPayBack()+findRedemptions())-hedgefund.z;
+            hedgefund.D=1;
+            marginCall();
+            System.out.println("Hedgefund "+hedgefund.id+"has paid back redemptions and reduced funding and is holding enough collteral");
+            System.out.println("The funding it paid back is"+findPayBack()+"and the redemptions it paid back is"+findRedemptions());
 
-    public void checkDefault(){
-        if(returnLeverage()>=market.alpha){
-            hedgefund.D=1;}
-            else{hedgefund.D=0;
-            System.out.println("I am "+hedgefund.name+" and I have just become insolvent");}
+        } else if ((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())<getTotalNewFunding()/(1-market.alpha)
+                && (hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>=getTotalNewFunding()){
+            hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), (hedgefund.balanceSheet.getTotalFunding()+findRedemptions()));
+            hedgefund.y= (hedgefund.getBalancesheet().getTotalFunding()+findRedemptions())-hedgefund.z;
+            hedgefund.D=1;
+            hedgefund.EndLoan=0;
+            System.out.println("Hedgefund "+hedgefund.id+"has paid back all funding and survived");
+            System.out.println("The funding it paid back is"+findPayBack()+"and the redemptions it paid back is"+findRedemptions());
+
+            //problem: we're not actually including reduction of funding here
+        } else {
+            System.out.println("Hedgefund "+hedgefund.id+"is defaulting because it can't pay everything back");
+
+            hedgefund.D=0;
+        }
+
         infoExchange.hedgefundDefaults[hedgefund.id]=hedgefund.D;
-
-
     }
 
-    //it decides how much of the amount to be paid back it will pay back using cash and how much by selling stocks. these amounts are stored in the
-    //temporary variables in the hedgefund object, y and z
-    public void repayFunding(){
-        if(findPayBack()>0){System.out.println("I am "+hedgefund.name+" and I am repaying "+findPayBack());}
-        hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), hedgefund.D*findPayBack());
-        hedgefund.y= hedgefund.D*findPayBack()-hedgefund.z;
-    }
+
+//    public void checkDefault(){
+//        if(returnLeverage()>=market.alpha){
+//            System.out.println(returnLeverage());
+//            hedgefund.D=1;}
+//            else{hedgefund.D=0;
+//            System.out.println("I am "+hedgefund.name+" and I have just become insolvent");}
+//        infoExchange.hedgefundDefaults[hedgefund.id]=hedgefund.D;
+//    }
+//
+//    //it decides how much of the amount to be paid back it will pay back using cash and how much by selling stocks. these amounts are stored in the
+//    //temporary variables in the hedgefund object, y and z
+//    public void repayFunding(){
+//        if(findRedemptions()+findPayBack()>0){System.out.println("I am "+hedgefund.name+" and I am paying "+(findPayBack()+findRedemptions()));}
+//        hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), hedgefund.D*(findPayBack()+findRedemptions()));
+//        hedgefund.y= hedgefund.D*(findPayBack()+findRedemptions())-hedgefund.z;
+//    }
 
     //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
     //to buy. all this info is stored in variables in the hedgefund object.
     public void marginCall(){
-        this.hedgefund.MC=this.hedgefund.D*Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
+        this.hedgefund.MC=Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
         if(hedgefund.MC>0){System.out.println("My name is"+hedgefund.name+"I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
     }
 
@@ -68,7 +106,9 @@ public class HedgefundBehaviour {
         for (int j = 0; j < N_BANKS; j++) {
             if (hedgefund.getBalancesheet().getTotalFunding() > 0)
             {
-                infoExchange.repayments.set(j, hedgefund.id, (infoExchange.repos.get(j, hedgefund.id) / hedgefund.getBalancesheet().getTotalFunding()) * (hedgefund.getBalancesheet().phi * market.S + hedgefund.getBalancesheet().C) * (1 - hedgefund.D));
+                infoExchange.repayments.set(j, hedgefund.id, (infoExchange.repos.get(j, hedgefund.id) / hedgefund.getBalancesheet().getTotalFunding()) * Math.min(hedgefund.getBalancesheet().phi * market.S + hedgefund.getBalancesheet().C, hedgefund.getBalancesheet().getTotalFunding()) * (1 - hedgefund.D));
+
+                infoExchange.loanTerminationsHF.set(j, hedgefund.id,hedgefund.EndLoan);
             }
             else{infoExchange.repayments.set(j, hedgefund.id, 0);}
 
@@ -92,7 +132,7 @@ public class HedgefundBehaviour {
      hedgefund.getBalancesheet().C=(hedgefund.getBalancesheet().C-hedgefund.z-hedgefund.MC)*hedgefund.D;
         int j;
         for(j=0; j<N_BANKS;j++){
-            infoExchange.repos.set(j, hedgefund.id, infoExchange.newFunding.get(j,hedgefund.id)*hedgefund.D);}
+            infoExchange.repos.set(j, hedgefund.id, infoExchange.newFunding.get(j,hedgefund.id)*hedgefund.D*hedgefund.EndLoan);}
 
      if(this.hedgefund.D==0){
          this.hedgefund.DEFAULTED=1;}

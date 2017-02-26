@@ -47,6 +47,17 @@ public class Bank {
 
     }
 
+    public void reset(){
+        this.D=1;
+        this.B=0;
+        this.x=0;
+        this.y=0;
+        this.z=0;
+        this.y_=0;
+        this.z_=0;
+        this.D_=1;
+    }
+
 
     public BankBalanceSheet getBalanceSheet(){
         return this.balanceSheet;

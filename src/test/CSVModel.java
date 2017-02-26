@@ -19,17 +19,23 @@ public class CSVModel extends SimState implements Steppable {
     int N_BANKS = 4; //NUMBER OF BANKS
     int N_HEDGEFUNDS =8; //NUMBER OF HEDGEFUNDS
 
-    private double sizeShock;
+    private double sizeShock=0.8;
     public double alpha=0.10;
-    private int N_SIMULATIONS;
+    public double eta=100;
+    public double delta=15000000;
+    private int N_SIMULATIONS_rows;
+    private int N_SIMULATIONS_columns;
+    private int N_ROWS=51;
+    private int N_COLUMNS=51;
 
     private Matrix initialRepos;
     private Matrix bankinfo;
     private Matrix hedgefundinfo;
 
-    private Matrix shockSizes;
+    private Matrix inputdata;
     private int nstep;
     private int nSim;
+    private int nSim_c;
 
     private Stoppable scheduleRepeat;
     private ArrayList<Bank> banks;
@@ -41,8 +47,12 @@ public class CSVModel extends SimState implements Steppable {
 
 
     double equity[]=new double[100];
-    double allequities[][] = new double [100][100];
-    Matrix allinfo = new Matrix(53, 5);
+    double allequities[][] = new double [N_ROWS][N_COLUMNS];
+    double bank0equity[]=new double[N_ROWS];
+    double bank1equity[]=new double[N_ROWS];
+    Matrix allinfo = new Matrix(N_ROWS, 6);
+    String[] allWhichOnes=new String[N_ROWS];
+    double k=0;
 
 
     public CSVModel(long seed) {
@@ -52,8 +62,8 @@ public class CSVModel extends SimState implements Steppable {
 
     //this is what youre going to change every time before running a simulation. you input parameters from a file and here say
     //which variables you want to have equal to those parameters
-    private void setParameters(double shockSize) {
-        sizeShock = shockSize;
+    private void setParameters(double eta, double delta) {
+        this.eta = eta; this.delta=delta;
     }
 
     //this function is called once
@@ -61,12 +71,12 @@ public class CSVModel extends SimState implements Steppable {
         super.start();
 
         //read initialisation data
-        bankinfo = csvdealer.readFile("dataModel.csv", 7, N_BANKS);
-        hedgefundinfo = csvdealer.readFile("dataModel2.csv", 5, N_HEDGEFUNDS);
-        initialRepos = csvdealer.readFile("dataRepos.csv", 9, N_BANKS);
+        bankinfo = csvdealer.readFile("dataModelRR.csv", 9, N_BANKS);
+        hedgefundinfo = csvdealer.readFile("dataModel2RR.csv", 5, N_HEDGEFUNDS);
+        initialRepos = csvdealer.readFile("dataReposRR.csv", 9, N_BANKS);
 
         //read all parameters you want to be trying
-        shockSizes=csvdealer.readFile("testingvalues.csv", 1, 51);
+        inputdata=csvdealer.readFile("testingeta.csv", 2, N_ROWS);
 
         //start MASON schedule
         scheduleRepeat = schedule.scheduleRepeating(this);
@@ -77,34 +87,39 @@ public class CSVModel extends SimState implements Steppable {
     public void step(SimState simState) {
 
         //set # simulations based on how many parameters you said you want to run
-        N_SIMULATIONS = shockSizes.getRowDimension();
+        N_SIMULATIONS_rows = (inputdata.getRowDimension());
+        N_SIMULATIONS_columns=(inputdata.getRowDimension());
 
-        //start simulation counter
+        //start simulationrow counter
         nSim = 0;
+        nSim_c=0;
 
-        while (nSim < N_SIMULATIONS) {
+        for (nSim=0;nSim < N_SIMULATIONS_rows; nSim++) {
+            for (nSim_c=0; nSim_c < N_SIMULATIONS_columns; nSim_c++) {
 
-            System.out.println("Running simulation "+nSim+"with shocksize"+shockSizes.get(nSim, 0));
-            // load the parameters for this simulation run, including a name for the output file
-            double shockSize = shockSizes.get(nSim, 0);
-            setParameters(shockSize);
+                System.out.println("Running simulation " + nSim + "with eta" + inputdata.get(nSim, 0) + "and delta" + inputdata.get(nSim_c, 1));
+                // load the parameters for this simulation run, including a name for the output file
+                double eta = inputdata.get(nSim, 0);
+                double delta = inputdata.get(nSim_c, 1);
+                setParameters(eta, delta);
 
-            modelStart();
+                modelStart();
 
-            //modelStep returns true or false depending on if k==0 or not
-            boolean done = false;
-            while (!done) {
-                done = modelStep(simState);
+                //modelStep returns true or false depending on if k==0 or not
+                boolean done = false;
+                while (!done) {
+                    done = modelStep(simState);
+                }
+                endSimulation();
             }
-            endSimulation();
-            nSim++;
         }
 
         simState.kill();
-        csvdealer.writeFile1("shocksandequity.csv", allequities, shockSizes);
-        csvdealer.writeFile2("detailedinfo.csv", shockSizes, allinfo);
-
-
+        csvdealer.writeFile1("shocksandequity.csv", allequities, inputdata);
+        csvdealer.writeFile2("detailedinfo.csv", inputdata, allinfo, allWhichOnes);
+        csvdealer.writeFile3("bank0.csv", inputdata, bank0equity);
+        csvdealer.writeFile3("bank1.csv", inputdata, bank1equity);
+        csvdealer.writeFile4("sensitivity_eta_delta.csv", inputdata, allequities);
 
     }
 
@@ -116,7 +131,7 @@ public class CSVModel extends SimState implements Steppable {
         nstep = 0;
 
         //one market is created with initial price 1, every bank and hedgefunds "signs up" to this market later
-        market = new Market(1.0, alpha);
+        market = new Market(1.0, alpha, eta, delta);
 
         infoExchange = new InfoExchange(N_BANKS, N_HEDGEFUNDS);
 
@@ -135,9 +150,11 @@ public class CSVModel extends SimState implements Steppable {
             bank.getBehaviour().setMarket(market);
             bank.getBehaviour().setInfoExchange(infoExchange);
             bank.getBalanceSheet().addLiability(bankinfo.get(j, 6));
-            bank.getBehaviour().setNO(); //THIS IS CURRENTLY NOT ACTUALLY USED
+            bank.getBehaviour().setNO();
             bank.getBalanceSheet().addCash(bankinfo.get(j, 3));
             bank.getBalanceSheet().addStocks(bankinfo.get(j, 5));
+            bank.getBehaviour().setLeveragePreferences(bankinfo.get(j,7), bankinfo.get(j,8));
+
 
             banks.add(bank);
             bank.balanceSheet.printBalanceSheet(bank);
@@ -167,6 +184,7 @@ public class CSVModel extends SimState implements Steppable {
 
         //this is where we send a shock to the price of the common stock:
         market.setS(market.S*sizeShock);
+        System.out.println(" i used sizeshock"+sizeShock);
 
     }
 
@@ -189,25 +207,20 @@ public class CSVModel extends SimState implements Steppable {
 
         }
 
-
-
         for (int i = 0; i < N_HEDGEFUNDS; i++) {
             if (hedgefunds.get(i).DEFAULTED == 0) {
-                hedgefunds.get(i).getBehaviour().checkDefault();
-                hedgefunds.get(i).getBehaviour().repayFunding();
-                hedgefunds.get(i).getBehaviour().marginCall();
+                hedgefunds.get(i).getBehaviour().checkCasesandAct();
                 hedgefunds.get(i).getBehaviour().giveUpdate();
             }
-
-
         }
 
         for (int j = 0; j < N_BANKS; j++) {
             if (banks.get(j).DEFAULTED == 0) {
-                banks.get(j).getBehaviour().checkDefault();
-                banks.get(j).getBehaviour().payBack2();
+                banks.get(j).getBehaviour().performPayback();
             }
         }
+
+        double k_old=k;
 
         double k = 0;
         for (int j = 0; j < N_BANKS; j++) {
@@ -254,14 +267,18 @@ public class CSVModel extends SimState implements Steppable {
         double equity_step = 0;
         for (int j = 0; j < N_BANKS; j++) {
             equity_step = banks.get(j).getBalanceSheet().calculateEquity() + equity_step;
+            banks.get(j).reset();
         }
         for (int i = 0; i < N_HEDGEFUNDS; i++) {
 
             equity_step = hedgefunds.get(i).getBalancesheet().calculateEquity() + equity_step;
+            hedgefunds.get(i).reset();
 
         }
 
         equity[nstep + 1] = equity_step;
+
+        infoExchange.reset(N_BANKS, N_HEDGEFUNDS);
 
         //now the market updates its price with a price impact function based on the price
         market.updateMarket(Order);
@@ -269,7 +286,7 @@ public class CSVModel extends SimState implements Steppable {
         nstep++;
 
 
-        return (k == 0);
+        return (k+k_old == 0);
 
     }
 
@@ -283,28 +300,26 @@ public class CSVModel extends SimState implements Steppable {
                 equity_final=hedgefunds.get(i).getBalancesheet().calculateEquity()+equity_final;
             }
 
+            equity[nstep+1]=equity_final;
+
             //we want to remove all the zero parts in the equity array. once all equity in the system is 0 it wont become
             //nonzero again so we just find the first zero:
 
-            double[] finalequity;
-            finalequity = new double [1];
+            System.out.println("equity_final="+equity_final);
 
-            for(int j=0;j<equity.length; j++){
-                if (equity[j]==0){
-                     finalequity=Arrays.copyOfRange(equity, 0, j);
-                     allinfo.set(nSim, 0, equity[j-1]);
-                     break;
-                }
-            }
+
 
             allinfo.set(nSim, 1, nstep);
 
 
-            //we also find how many banks have defaulted. THINK ABOUT METHOD HERE
+            //we also find how many banks have defaulted.
+
+            String WhichOnes = "";
 
             double Defaults_banks=0;
             for(int j = 0; j< N_BANKS; j++){
                 if(banks.get(j).getBalanceSheet().calculateEquity()==0){
+                    WhichOnes=WhichOnes+"bank"+banks.get(j).id;
                     Defaults_banks++;
                 }
             }
@@ -314,14 +329,44 @@ public class CSVModel extends SimState implements Steppable {
             double Defaults_hedgefunds=0;
             for(int i = 0; i< N_HEDGEFUNDS; i++){
                 if(hedgefunds.get(i).getBalancesheet().calculateEquity()==0){
+                    WhichOnes=WhichOnes+"hedgefund"+hedgefunds.get(i).id;
+
                     Defaults_hedgefunds++;
                 }
             }
+
+
+            allWhichOnes[nSim]=WhichOnes;
 
             allinfo.set(nSim, 3, Defaults_hedgefunds);
 
             allinfo.set(nSim, 4, market.S);
 
+
+            double[] finalequity;
+            finalequity = new double [1];
+
+            for(int j=0;j<equity.length; j++) {
+                if (equity[j] == 0) {
+                    if (Defaults_hedgefunds == N_HEDGEFUNDS && Defaults_banks == N_BANKS) {
+                        finalequity = Arrays.copyOfRange(equity, 0, j );
+                        allinfo.set(nSim, 0, equity[j]);
+
+
+                        break;
+                    } else {
+                        finalequity = Arrays.copyOfRange(equity, 0, j);
+                        allinfo.set(nSim, 0, equity[j-1]);
+                        break;
+                    }
+                }
+            }
+
+            allequities[nSim][nSim_c]=finalequity[finalequity.length-1];
+
+
+            bank0equity[nSim]=banks.get(0).getBalanceSheet().calculateEquity();
+            bank1equity[nSim]=banks.get(1).getBalanceSheet().calculateEquity();
 
 
 
@@ -336,7 +381,7 @@ public class CSVModel extends SimState implements Steppable {
             System.out.println("Total Equity in the system at each step:");
             printArray(finalequity);
 
-            allequities[nSim]=finalequity;
+            System.out.println("Ive reached this point!"+nSim+","+nSim_c);
 //            csvdealer.writeFile("testwriter"+sizeShock+".csv", finalequity);
 
             //finally we reset finalequity to zero so the next simulation can start afresh
@@ -364,6 +409,17 @@ public class CSVModel extends SimState implements Steppable {
             }
             System.out.print(anArray[i]);
         }
+    }
+
+    private static void printDoubleArray(double[][] anArray) {
+        for (int i = 0; i < anArray.length; i++) {
+            for (int j = 0; j < anArray[i].length; j++){
+                if (i > 0 && j > 0) {
+                    System.out.print(", ");
+                }
+            System.out.print(anArray[i][j]);
+        }
+    }
     }
 
 

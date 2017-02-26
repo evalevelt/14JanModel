@@ -15,7 +15,7 @@ public class Hedgefund {
     public HedgefundBalanceSheet balanceSheet;
 
     public int D;
-    public int D_;
+    public int EndLoan;
     public double DEFAULTED;
 
     public double y;
@@ -26,7 +26,7 @@ public class Hedgefund {
     public Hedgefund(String name, int id){
         this.name=name;
         this.D=1;
-        this.D_=1;
+        this.EndLoan=1;
         this.MC=0;
         this.y=0;
         this.z=0;
@@ -42,6 +42,14 @@ public class Hedgefund {
 
     public HedgefundBehaviour getBehaviour(){
         return this.Behaviour;
+    }
+
+    public void reset(){
+        this.D=1;
+        this.EndLoan=1;
+        this.MC=0;
+        this.y=0;
+        this.z=0;
     }
 
 
