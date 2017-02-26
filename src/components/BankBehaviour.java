@@ -69,6 +69,8 @@ public class BankBehaviour {
         double Gamma = amountToDelever();
         double SpareCashUsed=Math.min(Gamma, spareCash());
         double GammaSpare=Gamma-SpareCashUsed;
+        System.out.println(Gamma);
+        System.out.println(spareCash());
 
 //        this.bank.x=Math.min(GammaSpare, this.bank.balanceSheet.getTotalRepo());
 //        this.bank.y=Math.min(GammaSpare-this.bank.x, this.bank.balanceSheet.phi*market.S);

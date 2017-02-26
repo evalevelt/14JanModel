@@ -13,19 +13,20 @@ import java.util.Arrays;
 /**
  * Created by eva on 24/01/2017.
  */
-public class CSVModel extends SimState implements Steppable {
+public class CSVModelSensitivity extends SimState implements Steppable {
 
     // PARAMETERS
     int N_BANKS = 4; //NUMBER OF BANKS
     int N_HEDGEFUNDS =8; //NUMBER OF HEDGEFUNDS
 
-    private double sizeShock=0.8;
+    private double sizeShock;
     public double alpha=0.10;
     public double eta=3;
     public double delta=10000000;
-    private int N_SIMULATIONS;
-    private int N_ROWS=62;
-    private int N_COLUMNS=1;
+    private int N_SIMULATIONS_rows;
+    private int N_SIMULATIONS_columns;
+    private int N_ROWS=51;
+    private int N_COLUMNS=51;
 
     private Matrix initialRepos;
     private Matrix bankinfo;
@@ -54,15 +55,15 @@ public class CSVModel extends SimState implements Steppable {
     double k=0;
 
 
-    public CSVModel(long seed) {
+    public CSVModelSensitivity(long seed) {
         super(seed);
     }
 
 
     //this is what youre going to change every time before running a simulation. you input parameters from a file and here say
     //which variables you want to have equal to those parameters
-    private void setParameters(double sizeShock) {
-        this.sizeShock = sizeShock;
+    private void setParameters(double eta, double delta) {
+        this.eta = eta; this.delta=delta;
     }
 
     //this function is called once
@@ -70,12 +71,12 @@ public class CSVModel extends SimState implements Steppable {
         super.start();
 
         //read initialisation data
-        bankinfo = csvdealer.readFile("dataModelRL.csv", 9, N_BANKS);
-        hedgefundinfo = csvdealer.readFile("dataModel2RL.csv", 5, N_HEDGEFUNDS);
-        initialRepos = csvdealer.readFile("dataReposRL.csv", 9, N_BANKS);
+        bankinfo = csvdealer.readFile("dataModelRR.csv", 9, N_BANKS);
+        hedgefundinfo = csvdealer.readFile("dataModel2RR.csv", 5, N_HEDGEFUNDS);
+        initialRepos = csvdealer.readFile("dataReposRR.csv", 9, N_BANKS);
 
         //read all parameters you want to be trying
-        inputdata=csvdealer.readFile("testingvalues.csv", 1, N_ROWS);
+        inputdata=csvdealer.readFile("testingeta.csv", 1, N_ROWS);
 
         //start MASON schedule
         scheduleRepeat = schedule.scheduleRepeating(this);
@@ -86,18 +87,21 @@ public class CSVModel extends SimState implements Steppable {
     public void step(SimState simState) {
 
         //set # simulations based on how many parameters you said you want to run
-        N_SIMULATIONS = (inputdata.getRowDimension());
+        N_SIMULATIONS_rows = (inputdata.getRowDimension());
+        N_SIMULATIONS_columns=(inputdata.getRowDimension());
 
         //start simulationrow counter
         nSim = 0;
         nSim_c=0;
 
-        for (nSim=0;nSim < N_SIMULATIONS; nSim++) {
+        for (nSim=0;nSim < N_SIMULATIONS_rows; nSim++) {
+            for (nSim_c=0; nSim_c < N_SIMULATIONS_columns; nSim_c++) {
 
-                System.out.println("Running simulation " + nSim + "with shocksize" + inputdata.get(nSim, 0));
+                System.out.println("Running simulation " + nSim + "with eta" + inputdata.get(nSim, 0) + "and delta" + inputdata.get(nSim_c, 1));
                 // load the parameters for this simulation run, including a name for the output file
-                double shocksize = inputdata.get(nSim, 0);
-                setParameters(shocksize);
+                double eta = inputdata.get(nSim, 0);
+                double delta = inputdata.get(nSim_c, 1);
+                setParameters(eta, delta);
 
                 modelStart();
 
@@ -108,12 +112,15 @@ public class CSVModel extends SimState implements Steppable {
                 }
                 endSimulation();
             }
+        }
 
         simState.kill();
         csvdealer.writeFile1("shocksandequity.csv", allequities, inputdata);
         csvdealer.writeFile2("detailedinfo.csv", inputdata, allinfo, allWhichOnes);
         csvdealer.writeFile3("bank0.csv", inputdata, bank0equity);
         csvdealer.writeFile3("bank1.csv", inputdata, bank1equity);
+        csvdealer.writeFile4("sensitivity_eta_delta.csv", inputdata, allequities);
+
     }
 
 
@@ -355,7 +362,7 @@ public class CSVModel extends SimState implements Steppable {
                 }
             }
 
-            allequities[nstep]=finalequity;
+            allequities[nSim][nSim_c]=finalequity[finalequity.length-1];
 
 
             bank0equity[nSim]=banks.get(0).getBalanceSheet().calculateEquity();
@@ -374,6 +381,7 @@ public class CSVModel extends SimState implements Steppable {
             System.out.println("Total Equity in the system at each step:");
             printArray(finalequity);
 
+            System.out.println("Ive reached this point!"+nSim+","+nSim_c);
 //            csvdealer.writeFile("testwriter"+sizeShock+".csv", finalequity);
 
             //finally we reset finalequity to zero so the next simulation can start afresh
@@ -385,7 +393,7 @@ public class CSVModel extends SimState implements Steppable {
         }
 
     public static void main(String[] args){
-        doLoop(CSVModel.class, args);
+        doLoop(CSVModelSensitivity.class, args);
         System.exit(0);
 //
 

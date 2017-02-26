@@ -62,9 +62,9 @@ public class CSVdealer {
             for (i=1; i < data.size(); i++) {
                 String[] row = (String[]) (data.get(i));
                 for (j = 0; j < columns; j++) {
-                    Data.set(i-1, j, Double.parseDouble(row[j]));
+                        Data.set(i - 1, j, Double.parseDouble(row[j]));
+                    }
 
-                }
             }
 
             // Always close files.

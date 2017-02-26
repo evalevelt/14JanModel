@@ -13,11 +13,11 @@ import java.util.Arrays;
 /**
  * Created by eva on 24/01/2017.
  */
-public class CSVModel extends SimState implements Steppable {
+public class CSVModelNOHF extends SimState implements Steppable {
 
     // PARAMETERS
     int N_BANKS = 4; //NUMBER OF BANKS
-    int N_HEDGEFUNDS =8; //NUMBER OF HEDGEFUNDS
+    int N_HEDGEFUNDS =2; //NUMBER OF HEDGEFUNDS
 
     private double sizeShock=0.8;
     public double alpha=0.10;
@@ -54,7 +54,7 @@ public class CSVModel extends SimState implements Steppable {
     double k=0;
 
 
-    public CSVModel(long seed) {
+    public CSVModelNOHF(long seed) {
         super(seed);
     }
 
@@ -70,9 +70,9 @@ public class CSVModel extends SimState implements Steppable {
         super.start();
 
         //read initialisation data
-        bankinfo = csvdealer.readFile("dataModelRL.csv", 9, N_BANKS);
-        hedgefundinfo = csvdealer.readFile("dataModel2RL.csv", 5, N_HEDGEFUNDS);
-        initialRepos = csvdealer.readFile("dataReposRL.csv", 9, N_BANKS);
+        bankinfo = csvdealer.readFile("dataModelNOHF.csv", 9, N_BANKS);
+        hedgefundinfo = csvdealer.readFile("dataModelNO2HF.csv", 5, N_HEDGEFUNDS);
+        initialRepos = csvdealer.readFile("dataReposNOHF.csv", N_HEDGEFUNDS+1, N_BANKS);
 
         //read all parameters you want to be trying
         inputdata=csvdealer.readFile("testingvalues.csv", 1, N_ROWS);
@@ -131,8 +131,10 @@ public class CSVModel extends SimState implements Steppable {
         Matrix repos = initialRepos.getMatrix(0,initialRepos.getRowDimension()-1, 1,initialRepos.getColumnDimension()-1);
 
         infoExchange.setrepos(repos);
+
         assert(infoExchange.repos.getRowDimension()==N_BANKS);
         assert(infoExchange.repos.getColumnDimension()==N_HEDGEFUNDS);
+
 
         System.out.println("INITIAL BALANCESHEETS");
         System.out.println("---------------------------------------");
@@ -385,7 +387,7 @@ public class CSVModel extends SimState implements Steppable {
         }
 
     public static void main(String[] args){
-        doLoop(CSVModel.class, args);
+        doLoop(CSVModelNOHF.class, args);
         System.exit(0);
 //
 

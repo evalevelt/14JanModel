@@ -95,6 +95,7 @@ public class HedgefundBehaviour {
     //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
     //to buy. all this info is stored in variables in the hedgefund object.
     public void marginCall(){
+        System.out.println("im doing my margin call with this new funding"+getTotalNewFunding());
         this.hedgefund.MC=Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
         if(hedgefund.MC>0){System.out.println("My name is"+hedgefund.name+"I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
     }
