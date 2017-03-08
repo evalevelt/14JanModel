@@ -69,15 +69,13 @@ public class BankBehaviour {
         double Gamma = amountToDelever();
         double SpareCashUsed=Math.min(Gamma, spareCash());
         double GammaSpare=Gamma-SpareCashUsed;
-        System.out.println(Gamma);
-        System.out.println(spareCash());
 
 //        this.bank.x=Math.min(GammaSpare, this.bank.balanceSheet.getTotalRepo());
 //        this.bank.y=Math.min(GammaSpare-this.bank.x, this.bank.balanceSheet.phi*market.S);
-        this.bank.x=GammaSpare*bank.getBalanceSheet().getTotalRepo()/bank.getBalanceSheet().totalAssets();
+        this.bank.x=Math.min(GammaSpare*bank.getBalanceSheet().getTotalRepo()/(bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().phi*market.S),bank.getBalanceSheet().getTotalRepo()) ;
         if(bank.x>0){System.out.println("I am " +bank.name+" and I am reducing repo funding by"+bank.x);}
 
-        this.bank.y=GammaSpare*bank.getBalanceSheet().phi*market.S/bank.getBalanceSheet().totalAssets();
+        this.bank.y=Math.min(GammaSpare*bank.getBalanceSheet().phi*market.S/(bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().phi*market.S),bank.getBalanceSheet().phi*market.S) ;
         if(bank.y>0){System.out.println("I am " +bank.name+" and I am selling assets to delever, value"+bank.y);}
 
         double Gamma_=(lambda_B*(this.bank.balanceSheet.getTotalRepo())+this.bank.balanceSheet.getLiability()+(lambda_B-1)*(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()))*this.bank.B/lambda_B;
@@ -105,27 +103,38 @@ public class BankBehaviour {
     public double findTotalPayback(){
         double totalPayBack=0;
 
-        double[] payBackColumn = infoExchange.repayments.getArray()[bank.id];
+        double[] payBackRow = infoExchange.repayments.getArray()[bank.id];
         double[] reposRow = infoExchange.repos.getArray()[bank.id];
 
-        for (int i=0; i<payBackColumn.length;i++){
-            totalPayBack += Math.max((reposRow[i]-payBackColumn[i])*(1-infoExchange.hedgefundDefaults[i]),0);
+        for (int i=0; i<payBackRow.length;i++){
+            totalPayBack += (reposRow[i]-payBackRow[i])*(1-infoExchange.hedgefundDefaults[i]);
         }
 
         if (totalPayBack > 0 && bank.D==1) {
-
-
         System.out.println("bank"+bank.id+"has to cough up "+totalPayBack+"for the cashprovider");}
 
         return totalPayBack;
 
     }
 
+    public double findTotalUpdatedFunding(){
+        double updatedFunding=0;
+
+        double[] newFundingRow=infoExchange.newFunding.getArray()[bank.id];
+        double[] terminationsrow=infoExchange.loanTerminationsHF.getArray()[bank.id];
+        for(int i=0; i<newFundingRow.length; i++){
+            updatedFunding+= newFundingRow[i]*terminationsrow[i]*infoExchange.hedgefundDefaults[i];
+        }
+
+        return updatedFunding;
+    }
+
     public void performPayback() {
         if (findTotalPayback() > 0) {
-            if ((bank.getBalanceSheet().phi * market.S + bank.getBalanceSheet().C -findTotalPayback()-bank.getBalanceSheet().L)/(bank.getBalanceSheet().totalAssets()-findTotalPayback())<lambda_M && this.bank.D==1){
+            double totalcurrentassets=bank.getBalanceSheet().phi*market.S-bank.y+bank.getBalanceSheet().C-bank.z+findTotalUpdatedFunding()-findTotalPayback();
+            if ((bank.getBalanceSheet().phi * market.S + bank.getBalanceSheet().C -findTotalPayback()-bank.getBalanceSheet().L)/(totalcurrentassets)<lambda_M){
                 this.bank.D_=0;
-                System.out.println("I am " + bank.name + " and I am defaulting as I can't pay back the cashprovider");
+                if(this.bank.D==1){System.out.println("I am " + bank.name + " and I am defaulting as I can't pay back the cashprovider");}
             } else{
                 this.bank.D_=1;
                 payBack2();
@@ -134,7 +143,6 @@ public class BankBehaviour {
 
         }
     }
-
 
     public void payBack1(){
         double Lambda = findTotalPayback();
@@ -158,24 +166,27 @@ public class BankBehaviour {
     public double placeMarketOrder(){
         //NEEDS TO HAPPEN BEFORE UPDATE BALANCESHEET
 
+        double DefTemp=this.bank.D*this.bank.D_;
 
-        double Order=-(this.bank.y_+this.bank.y)*this.bank.D*this.bank.D_-this.bank.balanceSheet.phi*market.S*(1-this.bank.D)-this.bank.balanceSheet.phi*market.S*(1-this.bank.D_);
+        double Order=(this.bank.y_+this.bank.y)*DefTemp/market.S+this.bank.balanceSheet.phi*(1-DefTemp);
         return Order;
     }
 
     public void updateBalancesheet(){
+        double DefTemp=this.bank.D*this.bank.D_;
+
         int N_HEDGEFUNDS=infoExchange.repos.getColumnDimension();
 
-        this.bank.balanceSheet.phi=(this.bank.balanceSheet.phi-((this.bank.y+this.bank.y_)/market.S))*this.bank.D_*this.bank.D;
-        this.bank.balanceSheet.C=(this.bank.balanceSheet.C-this.bank.z-this.bank.z_)*this.bank.D*this.bank.D_;
+        this.bank.balanceSheet.phi=(this.bank.balanceSheet.phi-((this.bank.y+this.bank.y_)/market.S))*DefTemp;
+        this.bank.balanceSheet.C=(this.bank.balanceSheet.C-this.bank.z-this.bank.z_)*DefTemp;
 
         int i;
         for(i=0; i<N_HEDGEFUNDS;i++){
             infoExchange.repos.set(bank.id, i, infoExchange.hedgefundDefaults[i]*infoExchange.newFunding.get(bank.id,i)*infoExchange.loanTerminationsHF.get(bank.id,i));
         }
-        this.bank.balanceSheet.L=(this.bank.balanceSheet.L-bank.y-bank.z)*bank.D*bank.D_;
+        this.bank.balanceSheet.L=(this.bank.balanceSheet.L-bank.y-bank.z)*DefTemp;
 
-        if(this.bank.D==0||this.bank.D_==0){
+        if(DefTemp==0){
             this.bank.DEFAULTED=1;
         }
 

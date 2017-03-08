@@ -25,7 +25,7 @@ public class Market {
         //this doesnt make any sense!
         System.out.println("The market is stepping.");
         System.out.println("The order has been: "+q );
-        double S_=Math.max(S+S*q/Depth, 0.4);
+        double S_=S-S*q/Depth;
         System.out.println("New Price is: "+S_);
         delta=(S_-S)/S;
         this.S=S_;

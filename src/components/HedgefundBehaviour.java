@@ -9,6 +9,8 @@ public class HedgefundBehaviour {
     Market market;
     InfoExchange infoExchange;
 
+    public double redbuf;
+
 
     //these functions find the total new funding and the amount that is going to have to be paid back. totalnewfunding is here, total funding
     //in balancesheet because total funding is already marked on the BS and new funding is not
@@ -34,16 +36,16 @@ public class HedgefundBehaviour {
 
 
     public double findRedemptions(){
-        if(market.S<1){
+        if(market.delta<redbuf){
             return -(hedgefund.balanceSheet.calculateEquity()*((Math.exp(market.delta*market.eta)-1)/(Math.exp(1)-1)));}
         else return 0;
     }
 
-    public double returnLeverage(){
-        double equity = Math.max(hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C- hedgefund.balanceSheet.getTotalFunding(),0);
-        double lambda = equity/(this.hedgefund.balanceSheet.phi*market.S+this.hedgefund.balanceSheet.C-findPayBack());
-        return lambda;
-    }
+//    public double returnLeverage(){
+//        double equity = Math.max(hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-hedgefund.balanceSheet.getTotalFunding(),0);
+//        double lambda = equity/(this.hedgefund.balanceSheet.phi*market.S+this.hedgefund.balanceSheet.C-findPayBack());
+//        return lambda;
+//    }
 
     //NOTE THIS IS NOW SET UP TO WORK ONLY BECAUSE WE GIVE THE HEDGEFUND ONLY ONE BANK!!!!!
     public void checkCasesandAct(){
@@ -51,24 +53,23 @@ public class HedgefundBehaviour {
             hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), (findPayBack()+findRedemptions()));
             hedgefund.y= (findPayBack()+findRedemptions())-hedgefund.z;
             hedgefund.D=1;
-            marginCall();
+            hedgefund.EndLoan=1; //means NOT end
             System.out.println("Hedgefund "+hedgefund.id+"has paid back redemptions and reduced funding and is holding enough collteral");
-            System.out.println("The funding it paid back is"+findPayBack()+"and the redemptions it paid back is"+findRedemptions());
 
-        } else if ((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())<getTotalNewFunding()/(1-market.alpha)
+        } else if ((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findRedemptions()-findPayBack())<getTotalNewFunding()/(1-market.alpha)
                 && (hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>=getTotalNewFunding()){
             hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), (hedgefund.balanceSheet.getTotalFunding()+findRedemptions()));
             hedgefund.y= (hedgefund.getBalancesheet().getTotalFunding()+findRedemptions())-hedgefund.z;
             hedgefund.D=1;
             hedgefund.EndLoan=0;
-            System.out.println("Hedgefund "+hedgefund.id+"has paid back all funding and survived");
-            System.out.println("The funding it paid back is"+findPayBack()+"and the redemptions it paid back is"+findRedemptions());
+            System.out.println("Hedgefund "+hedgefund.id+"has had to pay back ALL funding and survived");
 
             //problem: we're not actually including reduction of funding here
         } else {
             System.out.println("Hedgefund "+hedgefund.id+"is defaulting because it can't pay everything back");
 
             hedgefund.D=0;
+            hedgefund.EndLoan=1; //means NOT ending actively
         }
 
         infoExchange.hedgefundDefaults[hedgefund.id]=hedgefund.D;
@@ -95,7 +96,6 @@ public class HedgefundBehaviour {
     //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
     //to buy. all this info is stored in variables in the hedgefund object.
     public void marginCall(){
-        System.out.println("im doing my margin call with this new funding"+getTotalNewFunding());
         this.hedgefund.MC=Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
         if(hedgefund.MC>0){System.out.println("My name is"+hedgefund.name+"I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
     }
@@ -112,8 +112,6 @@ public class HedgefundBehaviour {
                 infoExchange.loanTerminationsHF.set(j, hedgefund.id,hedgefund.EndLoan);
             }
             else{infoExchange.repayments.set(j, hedgefund.id, 0);}
-
-
         }
     }
 
@@ -121,7 +119,7 @@ public class HedgefundBehaviour {
    //finally it collects its orders and updates the balancesheet with all the temporary information stored in the hedgefund object variables.
     public double placeMarketOrder(){
         //NEEDS TO HAPPEN BEFORE UPDATE BALANCESHEET
-        double Order=(this.hedgefund.MC-this.hedgefund.y)*this.hedgefund.D-this.hedgefund.getBalancesheet().phi*market.S*(1-this.hedgefund.D);
+        double Order=this.hedgefund.y*this.hedgefund.D/market.S+this.hedgefund.getBalancesheet().phi*(1-this.hedgefund.D);
         return Order;
     }
 
@@ -129,8 +127,8 @@ public class HedgefundBehaviour {
      int N_BANKS=infoExchange.repos.getRowDimension();
 
 
-     hedgefund.getBalancesheet().phi=(hedgefund.getBalancesheet().phi+(hedgefund.MC-hedgefund.y)/hedgefund.Behaviour.market.S)*hedgefund.D;
-     hedgefund.getBalancesheet().C=(hedgefund.getBalancesheet().C-hedgefund.z-hedgefund.MC)*hedgefund.D;
+     hedgefund.getBalancesheet().phi=(hedgefund.getBalancesheet().phi-hedgefund.y/hedgefund.Behaviour.market.S)*hedgefund.D;
+     hedgefund.getBalancesheet().C=(hedgefund.getBalancesheet().C-hedgefund.z)*hedgefund.D;
         int j;
         for(j=0; j<N_BANKS;j++){
             infoExchange.repos.set(j, hedgefund.id, infoExchange.newFunding.get(j,hedgefund.id)*hedgefund.D*hedgefund.EndLoan);}
@@ -158,6 +156,8 @@ public class HedgefundBehaviour {
     public void setMarket(Market market){
         this.market=market;
     }
+
+    public void setRedbuf(double redbuf){this.redbuf=redbuf;}
 
     public void setInfoExchange(InfoExchange infoExchange){
         this.infoExchange=infoExchange;

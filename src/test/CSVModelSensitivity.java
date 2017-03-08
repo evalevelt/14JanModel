@@ -97,7 +97,7 @@ public class CSVModelSensitivity extends SimState implements Steppable {
         for (nSim=0;nSim < N_SIMULATIONS_rows; nSim++) {
             for (nSim_c=0; nSim_c < N_SIMULATIONS_columns; nSim_c++) {
 
-                System.out.println("Running simulation " + nSim + "with eta" + inputdata.get(nSim, 0) + "and delta" + inputdata.get(nSim_c, 1));
+                System.out.println("Running simulation " + nSim + "with eta" + inputdata.get(nSim, 0) + "and depth" + inputdata.get(nSim_c, 1));
                 // load the parameters for this simulation run, including a name for the output file
                 double eta = inputdata.get(nSim, 0);
                 double delta = inputdata.get(nSim_c, 1);

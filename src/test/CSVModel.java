@@ -16,15 +16,17 @@ import java.util.Arrays;
 public class CSVModel extends SimState implements Steppable {
 
     // PARAMETERS
-    int N_BANKS = 4; //NUMBER OF BANKS
-    int N_HEDGEFUNDS =8; //NUMBER OF HEDGEFUNDS
+    int N_BANKS = 2; //NUMBER OF BANKS
+    int N_HEDGEFUNDS =3; //NUMBER OF HEDGEFUNDS
 
     private double sizeShock=0.8;
     public double alpha=0.10;
     public double eta=3;
-    public double delta=10000000;
+    public double depth =760;
+    public double redbuf=-0.01;
+
     private int N_SIMULATIONS;
-    private int N_ROWS=62;
+    private int N_ROWS=61;
     private int N_COLUMNS=1;
 
     private Matrix initialRepos;
@@ -70,9 +72,9 @@ public class CSVModel extends SimState implements Steppable {
         super.start();
 
         //read initialisation data
-        bankinfo = csvdealer.readFile("dataModelRL.csv", 9, N_BANKS);
-        hedgefundinfo = csvdealer.readFile("dataModel2RL.csv", 5, N_HEDGEFUNDS);
-        initialRepos = csvdealer.readFile("dataReposRL.csv", 9, N_BANKS);
+        bankinfo = csvdealer.readFile("dataTestcase.csv", 9, N_BANKS);
+        hedgefundinfo = csvdealer.readFile("dataTestcase2.csv", 5, N_HEDGEFUNDS);
+        initialRepos = csvdealer.readFile("dataReposTestcase.csv", N_HEDGEFUNDS+1, N_BANKS);
 
         //read all parameters you want to be trying
         inputdata=csvdealer.readFile("testingvalues.csv", 1, N_ROWS);
@@ -90,7 +92,7 @@ public class CSVModel extends SimState implements Steppable {
 
         //start simulationrow counter
         nSim = 0;
-        nSim_c=0;
+        nSim_c = 0;
 
         for (nSim=0;nSim < N_SIMULATIONS; nSim++) {
 
@@ -124,7 +126,7 @@ public class CSVModel extends SimState implements Steppable {
         nstep = 0;
 
         //one market is created with initial price 1, every bank and hedgefunds "signs up" to this market later
-        market = new Market(1.0, alpha, eta, delta);
+        market = new Market(1.0, alpha, eta, depth);
 
         infoExchange = new InfoExchange(N_BANKS, N_HEDGEFUNDS);
 
@@ -158,6 +160,7 @@ public class CSVModel extends SimState implements Steppable {
             Hedgefund hedgefund = new Hedgefund("Hedgefund " + i,i);
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
+            hedgefund.getBehaviour().setRedbuf(redbuf);
             hedgefund.getBalancesheet().addStocks(hedgefundinfo.get(i, 4));
             hedgefund.getBalancesheet().addCash(hedgefundinfo.get(i, 3));
             hedgefunds.add(hedgefund);
@@ -177,7 +180,7 @@ public class CSVModel extends SimState implements Steppable {
 
         //this is where we send a shock to the price of the common stock:
         market.setS(market.S*sizeShock);
-        System.out.println(" i used sizeshock"+sizeShock);
+        System.out.println(" i used sizeshock "+sizeShock);
 
     }
 
@@ -213,16 +216,16 @@ public class CSVModel extends SimState implements Steppable {
             }
         }
 
-        double k_old=k;
-
-        double k = 0;
-        for (int j = 0; j < N_BANKS; j++) {
-            k = banks.get(j).B + k;
-            k = (1 - banks.get(j).D) + k;
-        }
-        for (int i = 0; i < N_HEDGEFUNDS; i++) {
-            k = (1 - hedgefunds.get(i).D) + k;
-        }
+//        double k_old=k;
+//
+//        double k = 0;
+//        for (int j = 0; j < N_BANKS; j++) {
+//            k = banks.get(j).B + k;
+//            k = (1 - banks.get(j).D) + k;
+//        }
+//        for (int i = 0; i < N_HEDGEFUNDS; i++) {
+//            k = (1 - hedgefunds.get(i).D) + k;
+//        }
 
         //Order is the variable that will store all the orders that the institutions are placing to buy/sell stock during a timestep
         double Order = 0;
@@ -263,10 +266,8 @@ public class CSVModel extends SimState implements Steppable {
             banks.get(j).reset();
         }
         for (int i = 0; i < N_HEDGEFUNDS; i++) {
-
             equity_step = hedgefunds.get(i).getBalancesheet().calculateEquity() + equity_step;
             hedgefunds.get(i).reset();
-
         }
 
         equity[nstep + 1] = equity_step;
@@ -274,12 +275,13 @@ public class CSVModel extends SimState implements Steppable {
         infoExchange.reset(N_BANKS, N_HEDGEFUNDS);
 
         //now the market updates its price with a price impact function based on the price
+        double S=market.S;
         market.updateMarket(Order);
 
         nstep++;
 
 
-        return (k+k_old == 0);
+        return (market.S==S);
 
     }
 
