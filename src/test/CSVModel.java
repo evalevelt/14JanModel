@@ -22,8 +22,8 @@ public class CSVModel extends SimState implements Steppable {
     private double sizeShock=0.8;
     public double alpha=0.10;
     public double eta=3;
-    public double depth =760;
-    public double redbuf=-0.01;
+    public double depth =3000;
+    public double redbuf=-0.05;
 
     private int N_SIMULATIONS;
     private int N_ROWS=61;
@@ -95,7 +95,7 @@ public class CSVModel extends SimState implements Steppable {
         nSim_c = 0;
 
         for (nSim=0;nSim < N_SIMULATIONS; nSim++) {
-
+                System.out.println();
                 System.out.println("Running simulation " + nSim + "with shocksize" + inputdata.get(nSim, 0));
                 // load the parameters for this simulation run, including a name for the output file
                 double shocksize = inputdata.get(nSim, 0);
@@ -180,7 +180,7 @@ public class CSVModel extends SimState implements Steppable {
 
         //this is where we send a shock to the price of the common stock:
         market.setS(market.S*sizeShock);
-        System.out.println(" i used sizeshock "+sizeShock);
+        System.out.println(" I am applying the shock: "+sizeShock+"now!");
 
     }
 
@@ -251,12 +251,22 @@ public class CSVModel extends SimState implements Steppable {
                 //now the bank has also completed all its actions and can place its final order and update its actual Balancesheet
                 Order = Order + banks.get(j).getBehaviour().placeMarketOrder();
                 banks.get(j).getBehaviour().updateBalancesheet();
+                banks.get(j).balanceSheet.printBalanceSheet(banks.get(j));
+            } else {
+                System.out.println("Bank " +banks.get(j).id+ " has DEFAULTED");
+                System.out.println("-----------------------------");
+
             }
-            banks.get(j).balanceSheet.printBalanceSheet(banks.get(j));
         }
 
         for (int i = 0; i < N_HEDGEFUNDS; i++) {
-            hedgefunds.get(i).balanceSheet.printBalanceSheet(hedgefunds.get(i));
+            if (hedgefunds.get(i).DEFAULTED == 0) {
+
+            hedgefunds.get(i).balanceSheet.printBalanceSheet(hedgefunds.get(i));}
+            else{
+                System.out.println("Hedgefund "+hedgefunds.get(i).id+" has DEFAULTED");
+                System.out.println("-----------------------------");
+            }
         }
 
 
@@ -314,7 +324,7 @@ public class CSVModel extends SimState implements Steppable {
             double Defaults_banks=0;
             for(int j = 0; j< N_BANKS; j++){
                 if(banks.get(j).getBalanceSheet().calculateEquity()==0){
-                    WhichOnes=WhichOnes+"bank"+banks.get(j).id;
+                    WhichOnes=WhichOnes+"B"+banks.get(j).id;
                     Defaults_banks++;
                 }
             }
@@ -324,7 +334,7 @@ public class CSVModel extends SimState implements Steppable {
             double Defaults_hedgefunds=0;
             for(int i = 0; i< N_HEDGEFUNDS; i++){
                 if(hedgefunds.get(i).getBalancesheet().calculateEquity()==0){
-                    WhichOnes=WhichOnes+"hedgefund"+hedgefunds.get(i).id;
+                    WhichOnes=WhichOnes+"HF"+hedgefunds.get(i).id;
 
                     Defaults_hedgefunds++;
                 }

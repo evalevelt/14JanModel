@@ -54,7 +54,6 @@ public class HedgefundBehaviour {
             hedgefund.y= (findPayBack()+findRedemptions())-hedgefund.z;
             hedgefund.D=1;
             hedgefund.EndLoan=1; //means NOT end
-            System.out.println("Hedgefund "+hedgefund.id+"has paid back redemptions and reduced funding and is holding enough collteral");
 
         } else if ((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findRedemptions()-findPayBack())<getTotalNewFunding()/(1-market.alpha)
                 && (hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>=getTotalNewFunding()){
@@ -62,11 +61,11 @@ public class HedgefundBehaviour {
             hedgefund.y= (hedgefund.getBalancesheet().getTotalFunding()+findRedemptions())-hedgefund.z;
             hedgefund.D=1;
             hedgefund.EndLoan=0;
-            System.out.println("Hedgefund "+hedgefund.id+"has had to pay back ALL funding and survived");
+            System.out.println("Hedgefund "+hedgefund.id+" has been forced to pay back all funding, and survived");
 
             //problem: we're not actually including reduction of funding here
         } else {
-            System.out.println("Hedgefund "+hedgefund.id+"is defaulting because it can't pay everything back");
+            System.out.println("Hedgefund "+hedgefund.id+" is defaulting because it can't pay everything back");
 
             hedgefund.D=0;
             hedgefund.EndLoan=1; //means NOT ending actively
@@ -93,12 +92,12 @@ public class HedgefundBehaviour {
 //        hedgefund.y= hedgefund.D*(findPayBack()+findRedemptions())-hedgefund.z;
 //    }
 
-    //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
-    //to buy. all this info is stored in variables in the hedgefund object.
-    public void marginCall(){
-        this.hedgefund.MC=Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
-        if(hedgefund.MC>0){System.out.println("My name is"+hedgefund.name+"I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
-    }
+//    //now it checks whether it holds enough stock for its collateral needs, if this is not enough it decides how many extra assets it needs
+//    //to buy. all this info is stored in variables in the hedgefund object.
+//    public void marginCall(){
+//        this.hedgefund.MC=Math.max((getTotalNewFunding())/(1-market.alpha)-hedgefund.getBalancesheet().phi*market.S,0);
+//        if(hedgefund.MC>0){System.out.println("My name is"+hedgefund.name+"I am spending "+hedgefund.MC+" on assets to meet my Margin Call");}
+//    }
 
     //now the hedgefund lets the bank know whether it has defaulted, and if so, how much it's going to be able to repay. all this information is stored
     //in one entry in the "repayments" matrix; the value shows how much the hedgefund is going to be able to give back to the bank

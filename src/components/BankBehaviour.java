@@ -29,7 +29,7 @@ public class BankBehaviour {
     public void checkMinLev(){
         if(returnLeverage()<lambda_M){
             this.bank.D=0;
-            System.out.println("I am "+bank.name+" and I am defaulting by dropping below minimum leverage. My leverage is "+returnLeverage());
+            System.out.println(bank.name+" is defaulting by dropping below minimum leverage. Leverage is "+returnLeverage());
         } else {this.bank.D=1;}
 
         this.infoExchange.bankDefaults1[bank.id]=this.bank.D;
@@ -42,8 +42,9 @@ public class BankBehaviour {
 
         if(lambda_M<=returnLeverage() && returnLeverage()<lambda_B){
             this.bank.B=1;
-            System.out.println("I am "+bank.name+"and I am delevering, as my leverage is "+returnLeverage()+" while my buffer leverage is "+lambda_B);
-        } else {this.bank.B=0;}
+            System.out.println(bank.name+" is delevering, as its leverage is "+returnLeverage()+" while its buffer leverage is "+lambda_B);
+        } else {
+            this.bank.B=0;}
 
     }
 
@@ -72,17 +73,19 @@ public class BankBehaviour {
 
 //        this.bank.x=Math.min(GammaSpare, this.bank.balanceSheet.getTotalRepo());
 //        this.bank.y=Math.min(GammaSpare-this.bank.x, this.bank.balanceSheet.phi*market.S);
+       if(bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().phi*market.S>0 && Gamma>0){
         this.bank.x=Math.min(GammaSpare*bank.getBalanceSheet().getTotalRepo()/(bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().phi*market.S),bank.getBalanceSheet().getTotalRepo()) ;
-        if(bank.x>0){System.out.println("I am " +bank.name+" and I am reducing repo funding by"+bank.x);}
+        if(bank.x>0){System.out.println(bank.name+" is reducing repo funding by "+bank.x);}
 
         this.bank.y=Math.min(GammaSpare*bank.getBalanceSheet().phi*market.S/(bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().phi*market.S),bank.getBalanceSheet().phi*market.S) ;
-        if(bank.y>0){System.out.println("I am " +bank.name+" and I am selling assets to delever, value"+bank.y);}
+        if(bank.y>0){System.out.println(bank.name+" is selling assets to delever, value "+bank.y);}
 
         double Gamma_=(lambda_B*(this.bank.balanceSheet.getTotalRepo())+this.bank.balanceSheet.getLiability()+(lambda_B-1)*(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()))*this.bank.B/lambda_B;
 
-        this.bank.z=Math.max(Gamma_-spareCash()-bank.x-bank.y,0)+Math.min(Gamma, spareCash());
-        if(bank.z>0){System.out.println("I am " +bank.name+" and I decreasing cash in total by"+bank.z);}
-    }
+        this.bank.z=Math.max(Gamma_-spareCash()-bank.x-bank.y,0)+Math.min(Gamma, spareCash());}
+        if(bank.z>0){System.out.println(bank.name+" is decreasing cash in total by "+bank.z);}
+
+}
 
     //these functions have the purpose of communicating with hedgefunds about updated funding.
     public void giveFundingUpdate(){
@@ -110,9 +113,6 @@ public class BankBehaviour {
             totalPayBack += (reposRow[i]-payBackRow[i])*(1-infoExchange.hedgefundDefaults[i]);
         }
 
-        if (totalPayBack > 0 && bank.D==1) {
-        System.out.println("bank"+bank.id+"has to cough up "+totalPayBack+"for the cashprovider");}
-
         return totalPayBack;
 
     }
@@ -131,10 +131,11 @@ public class BankBehaviour {
 
     public void performPayback() {
         if (findTotalPayback() > 0) {
-            double totalcurrentassets=bank.getBalanceSheet().phi*market.S-bank.y+bank.getBalanceSheet().C-bank.z+findTotalUpdatedFunding()-findTotalPayback();
-            if ((bank.getBalanceSheet().phi * market.S + bank.getBalanceSheet().C -findTotalPayback()-bank.getBalanceSheet().L)/(totalcurrentassets)<lambda_M){
+            System.out.println("Bank "+bank.id+" has to add "+findTotalPayback()+" to pay back the cashprovider");
+            double totalcurrentassets=bank.getBalanceSheet().phi*market.S-bank.y+bank.getBalanceSheet().C-bank.z;
+            if ((totalcurrentassets<findTotalPayback())){
                 this.bank.D_=0;
-                if(this.bank.D==1){System.out.println("I am " + bank.name + " and I am defaulting as I can't pay back the cashprovider");}
+                if(this.bank.D==1){System.out.println(bank.name + " is defaulting as it can't pay back the cashprovider");}
             } else{
                 this.bank.D_=1;
                 payBack2();
@@ -155,7 +156,7 @@ public class BankBehaviour {
     public void payBack2(){
         double SpareCash=bank.balanceSheet.C-bank.z-minCash();
         double LambdaMore = Math.max(findTotalPayback()-SpareCash,0);
-        bank.y_=Math.min(LambdaMore,bank.balanceSheet.phi*market.S);
+        bank.y_=Math.min(LambdaMore,bank.balanceSheet.phi*market.S-bank.y);
         bank.z_=Math.max(LambdaMore-bank.y_-SpareCash,0)+Math.min(findTotalPayback(), SpareCash);
 
     }
