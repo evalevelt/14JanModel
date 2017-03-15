@@ -16,17 +16,17 @@ import java.util.Arrays;
 public class CSVModel extends SimState implements Steppable {
 
     // PARAMETERS
-    int N_BANKS = 2; //NUMBER OF BANKS
-    int N_HEDGEFUNDS =3; //NUMBER OF HEDGEFUNDS
+    int N_BANKS = 4; //NUMBER OF BANKS
+    int N_HEDGEFUNDS =8; //NUMBER OF HEDGEFUNDS
 
     private double sizeShock=0.8;
     public double alpha=0.10;
     public double eta=3;
-    public double depth =3000;
+    public double depth =5890000;
     public double redbuf=-0.05;
 
     private int N_SIMULATIONS;
-    private int N_ROWS=61;
+    private int N_ROWS=34;
     private int N_COLUMNS=1;
 
     private Matrix initialRepos;
@@ -72,9 +72,9 @@ public class CSVModel extends SimState implements Steppable {
         super.start();
 
         //read initialisation data
-        bankinfo = csvdealer.readFile("dataTestcase.csv", 9, N_BANKS);
-        hedgefundinfo = csvdealer.readFile("dataTestcase2.csv", 5, N_HEDGEFUNDS);
-        initialRepos = csvdealer.readFile("dataReposTestcase.csv", N_HEDGEFUNDS+1, N_BANKS);
+        bankinfo = csvdealer.readFile("dataModelRR.csv", 9, N_BANKS);
+        hedgefundinfo = csvdealer.readFile("dataModel2RR.csv", 5, N_HEDGEFUNDS);
+        initialRepos = csvdealer.readFile("dataReposRR.csv", N_HEDGEFUNDS+1, N_BANKS);
 
         //read all parameters you want to be trying
         inputdata=csvdealer.readFile("testingvalues.csv", 1, N_ROWS);
@@ -144,10 +144,10 @@ public class CSVModel extends SimState implements Steppable {
             Bank bank = new Bank("Bank " + j, j);
             bank.getBehaviour().setMarket(market);
             bank.getBehaviour().setInfoExchange(infoExchange);
-            bank.getBalanceSheet().addLiability(bankinfo.get(j, 6));
+            bank.getBalanceSheet().setLiability(bankinfo.get(j, 6));
             bank.getBehaviour().setNO();
-            bank.getBalanceSheet().addCash(bankinfo.get(j, 3));
-            bank.getBalanceSheet().addStocks(bankinfo.get(j, 5));
+            bank.getBalanceSheet().setCash(bankinfo.get(j, 3));
+            bank.getBalanceSheet().setStocks(bankinfo.get(j, 5));
             bank.getBehaviour().setLeveragePreferences(bankinfo.get(j,7), bankinfo.get(j,8));
 
 
@@ -216,16 +216,17 @@ public class CSVModel extends SimState implements Steppable {
             }
         }
 
-//        double k_old=k;
-//
-//        double k = 0;
-//        for (int j = 0; j < N_BANKS; j++) {
-//            k = banks.get(j).B + k;
-//            k = (1 - banks.get(j).D) + k;
-//        }
-//        for (int i = 0; i < N_HEDGEFUNDS; i++) {
-//            k = (1 - hedgefunds.get(i).D) + k;
-//        }
+        double k = 0;
+        for (int j = 0; j < N_BANKS; j++) {
+           if(banks.get(j).getBehaviour().hasChanged()){
+               k++;
+           }
+        }
+        for (int i = 0; i < N_HEDGEFUNDS; i++) {
+           if(hedgefunds.get(i).getBehaviour().hasChanged()){
+               k++;
+           }
+        }
 
         //Order is the variable that will store all the orders that the institutions are placing to buy/sell stock during a timestep
         double Order = 0;
@@ -290,8 +291,7 @@ public class CSVModel extends SimState implements Steppable {
 
         nstep++;
 
-
-        return (market.S==S);
+        return (k==0);
 
     }
 

@@ -47,7 +47,7 @@ public class HedgefundBalanceSheet {
     public double getCash(){return this.C;}
 
     public double calculateEquity(){
-        return (phi*hedgefund.getBehaviour().market.S+C)-getTotalFunding();
+        return Math.max((phi*hedgefund.getBehaviour().market.S+C)-getTotalFunding(),0);
     }
 
     public void printBalanceSheet(Hedgefund hedgefund){

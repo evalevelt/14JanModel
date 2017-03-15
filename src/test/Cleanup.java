@@ -78,12 +78,12 @@
 //            bank.setBalanceSheet(sheet);
 //            bank.getBehaviour().setMarket(market);
 //            bank.getBalanceSheet().addRepo(repos[j-1][0], repos[j-1][1], repos[j-1][2], repos[j-1][3], repos[j-1][4]);
-//            bank.getBalanceSheet().addLiability(bankliabilities[j-1]);
+//            bank.getBalanceSheet().setLiability(bankliabilities[j-1]);
 //            //NO is the constant denominator in the LCR ratio, which we set once here based on liabilities
 //            bank.getBehaviour().setNO();
-//            bank.getBalanceSheet().addCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
+//            bank.getBalanceSheet().setCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
 //            double K = ((bank.getBehaviour().lambda_T-1)*bank.getBalanceSheet().getCash()+bank.getBehaviour().lambda_T*bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().getLiability())/(market.S*(1-bank.getBehaviour().lambda_T));
-//            bank.getBalanceSheet().addStocks(K*extra_B);
+//            bank.getBalanceSheet().setStocks(K*extra_B);
 //
 //            banks.add(bank);
 //            bank.printBalanceSheet();
@@ -96,8 +96,8 @@
 //            hedgefund.setBalancesheet(sheet);
 //            hedgefund.getBehaviour().setMarket(market);
 //            hedgefund.getBalancesheet().addRepo(repos[0][i-1], repos[1][i-1], repos[2][i-1], repos[3][i-1], repos[4][i-1]);
-//            hedgefund.getBalancesheet().addStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
-//            hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.3);
+//            hedgefund.getBalancesheet().setStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
+//            hedgefund.getBalancesheet().setCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.3);
 //            hedgefunds.add(hedgefund);
 //            hedgefund.printBalanceSheet();
 //

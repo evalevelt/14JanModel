@@ -24,15 +24,15 @@ public class BankBalanceSheet {
         this.L=0;
     }
 
-    public void addStocks(double newStocks){
-        phi=phi+newStocks;
+    public void setStocks(double newStocks){
+        phi=newStocks;
     }
 
-    public void addCash(double Cash){
-        this.C=C+Cash;
+    public void setCash(double Cash){
+        this.C=Cash;
     }
 
-    public void addLiability(double Liability){
+    public void setLiability(double Liability){
         this.L=L+Liability;
     }
 

@@ -22,8 +22,9 @@ public class BankBehaviour {
 
     //these two functions find the leverage and check if its below the minimum, triggering default
     public double returnLeverage(){
+        if(this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()>0){
         double lambda = (this.bank.balanceSheet.phi*market.S+this.bank.balanceSheet.getCash()-this.bank.balanceSheet.getLiability())/(this.bank.balanceSheet.totalAssets());
-        return lambda;
+        return lambda;} else {return 0;}
     }
 
     public void checkMinLev(){
@@ -140,7 +141,7 @@ public class BankBehaviour {
                 this.bank.D_=1;
                 payBack2();
             }
-            this.infoExchange.bankDefaults2[bank.id] = this.bank.D_;
+           // this.infoExchange.bankDefaults2[bank.id] = this.bank.D_;
 
         }
     }
@@ -158,7 +159,6 @@ public class BankBehaviour {
         double LambdaMore = Math.max(findTotalPayback()-SpareCash,0);
         bank.y_=Math.min(LambdaMore,bank.balanceSheet.phi*market.S-bank.y);
         bank.z_=Math.max(LambdaMore-bank.y_-SpareCash,0)+Math.min(findTotalPayback(), SpareCash);
-
     }
 
 
@@ -171,6 +171,28 @@ public class BankBehaviour {
 
         double Order=(this.bank.y_+this.bank.y)*DefTemp/market.S+this.bank.balanceSheet.phi*(1-DefTemp);
         return Order;
+    }
+
+    public boolean hasChanged(){
+        double DefTemp=this.bank.D*this.bank.D_;
+        int N_HEDGEFUNDS=infoExchange.repos.getColumnDimension();
+        int i;
+
+        int reposcheck=0;
+
+        for(i=0; i<N_HEDGEFUNDS;i++) {
+            if (infoExchange.repos.get(bank.id, i) == (infoExchange.hedgefundDefaults[i] * infoExchange.newFunding.get(bank.id, i) * infoExchange.loanTerminationsHF.get(bank.id, i))) {
+            } else {
+                reposcheck ++;
+            }
+        }
+
+        if(this.bank.balanceSheet.phi==(this.bank.balanceSheet.phi-((this.bank.y+this.bank.y_)/market.S))*DefTemp &&
+                this.bank.balanceSheet.C==(this.bank.balanceSheet.C-this.bank.z-this.bank.z_)*DefTemp&&
+                this.bank.balanceSheet.L==(this.bank.balanceSheet.L-bank.y-bank.z)*DefTemp&&
+                reposcheck==0){
+            return false;
+        } else {return true;}
     }
 
     public void updateBalancesheet(){

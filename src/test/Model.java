@@ -98,13 +98,13 @@
 //            Bank bank = new Bank("Bank " + j, j); //todo Fix the naming of the banks
 //            bank.getBehaviour().setMarket(market);
 //            bank.getBehaviour().setInfoExchange(infoExchange);
-//            bank.getBalanceSheet().addLiability(bankLiabilities[j]);
+//            bank.getBalanceSheet().setLiability(bankLiabilities[j]);
 //            //NO is the constant denominator in the LCR ratio, which we set once here based on liabilities
 //            bank.getBehaviour().setNO();
-//            //bank.getBalanceSheet().addCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
-//            bank.getBalanceSheet().addCash(bankCash[j]);
+//            //bank.getBalanceSheet().setCash(bank.getBehaviour().kappa_T*bank.getBehaviour().getNO());
+//            bank.getBalanceSheet().setCash(bankCash[j]);
 //            double K = ((bank.getBehaviour().lambda_T-1)*bank.getBalanceSheet().getCash()+bank.getBehaviour().lambda_T*bank.getBalanceSheet().getTotalRepo()+bank.getBalanceSheet().getLiability())/(market.S*(1-bank.getBehaviour().lambda_T));
-//            bank.getBalanceSheet().addStocks(K*extra_B);
+//            bank.getBalanceSheet().setStocks(K*extra_B);
 //
 //            banks.add(bank);
 //            bank.balanceSheet.printBalanceSheet(bank);
@@ -115,10 +115,10 @@
 //            Hedgefund hedgefund = new Hedgefund("Hedgefund " + i,i); //todo fix naming
 //            hedgefund.getBehaviour().setMarket(market);
 //            hedgefund.getBehaviour().setInfoExchange(infoExchange);
-//            //hedgefund.getBalancesheet().addStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
-//            //hedgefund.getBalancesheet().addCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.1);
-//            hedgefund.getBalancesheet().addStocks(hedgefundStock[i]);
-//            hedgefund.getBalancesheet().addCash(hedgefundCash[i]);
+//            //hedgefund.getBalancesheet().setStocks(hedgefund.getBalancesheet().getTotalFunding()/((1-(hedgefund.getBehaviour().alpha))*market.S)*extra_HF);
+//            //hedgefund.getBalancesheet().setCash((hedgefund.getBalancesheet().getPhi()*market.S)*0.1);
+//            hedgefund.getBalancesheet().setStocks(hedgefundStock[i]);
+//            hedgefund.getBalancesheet().setCash(hedgefundCash[i]);
 //            hedgefunds.add(hedgefund);
 //            hedgefund.balanceSheet.printBalanceSheet(hedgefund);
 //

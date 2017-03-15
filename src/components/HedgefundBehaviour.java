@@ -56,7 +56,7 @@ public class HedgefundBehaviour {
             hedgefund.EndLoan=1; //means NOT end
 
         } else if ((hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findRedemptions()-findPayBack())<getTotalNewFunding()/(1-market.alpha)
-                && (hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>=getTotalNewFunding()){
+                && (hedgefund.balanceSheet.phi*market.S+hedgefund.balanceSheet.C-findPayBack()-findRedemptions())>getTotalNewFunding()){
             hedgefund.z=Math.min(hedgefund.getBalancesheet().getCash(), (hedgefund.balanceSheet.getTotalFunding()+findRedemptions()));
             hedgefund.y= (hedgefund.getBalancesheet().getTotalFunding()+findRedemptions())-hedgefund.z;
             hedgefund.D=1;
@@ -120,6 +120,26 @@ public class HedgefundBehaviour {
         //NEEDS TO HAPPEN BEFORE UPDATE BALANCESHEET
         double Order=this.hedgefund.y*this.hedgefund.D/market.S+this.hedgefund.getBalancesheet().phi*(1-this.hedgefund.D);
         return Order;
+    }
+
+    public boolean hasChanged(){
+        int N_BANKS=infoExchange.repos.getRowDimension();
+        int j;
+
+        int reposcheck=0;
+
+        for(j=0; j<N_BANKS;j++) {
+            if (infoExchange.repos.get(j, hedgefund.id) == infoExchange.newFunding.get(j,hedgefund.id)*hedgefund.D*hedgefund.EndLoan) {
+            } else {
+                reposcheck ++;
+            }
+        }
+
+        if(hedgefund.getBalancesheet().phi==(hedgefund.getBalancesheet().phi-hedgefund.y/hedgefund.Behaviour.market.S)*hedgefund.D &&
+                hedgefund.getBalancesheet().C==(hedgefund.getBalancesheet().C-hedgefund.z)*hedgefund.D&&
+                reposcheck==0){
+            return false;
+        } else {return true;}
     }
 
  public void updateBalanceSheet(){
