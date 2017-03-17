@@ -165,8 +165,8 @@ public class CSVModelSensitivity extends SimState implements Steppable {
             Hedgefund hedgefund = new Hedgefund("Hedgefund " + i,i);
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
-            hedgefund.getBalancesheet().addStocks(hedgefundinfo.get(i, 4));
-            hedgefund.getBalancesheet().addCash(hedgefundinfo.get(i, 3));
+            hedgefund.getBalancesheet().setStocks(hedgefundinfo.get(i, 4));
+            hedgefund.getBalancesheet().setCash(hedgefundinfo.get(i, 3));
             hedgefunds.add(hedgefund);
             hedgefund.balanceSheet.printBalanceSheet(hedgefund);
 

@@ -22,11 +22,11 @@ public class CSVModel14Mar extends SimState implements Steppable {
     private double sizeShock = 0.8;
     public double alpha = 0.10;
     public double eta = 3;
-    public double depth = 10000;
+    public double depth = 20000;
     public double redbuf = -0.05;
 
     private int N_SIMULATIONS;
-    private int N_ROWS = 87;
+    private int N_ROWS = 61;
     private int N_COLUMNS = 1;
 
     private Matrix initialRepos;
@@ -165,8 +165,8 @@ public class CSVModel14Mar extends SimState implements Steppable {
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
             hedgefund.getBehaviour().setRedbuf(redbuf);
-            hedgefund.getBalancesheet().addStocks(hedgefundinfo.get(i, 4));
-            hedgefund.getBalancesheet().addCash(hedgefundinfo.get(i, 3));
+            hedgefund.getBalancesheet().setStocks(hedgefundinfo.get(i, 4));
+            hedgefund.getBalancesheet().setCash(hedgefundinfo.get(i, 3));
             hedgefunds.add(hedgefund);
             hedgefund.balanceSheet.printBalanceSheet(hedgefund);
 

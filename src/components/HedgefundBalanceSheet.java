@@ -20,12 +20,12 @@ public class HedgefundBalanceSheet {
         this.hedgefund = hedgefund;
     }
 
-    public void addStocks(double newStocks){
-        phi=phi+newStocks;
+    public void setStocks(double newStocks){
+        this.phi=newStocks;
     }
 
-    public void addCash(double Cash){
-        this.C=C+Cash;
+    public void setCash(double Cash){
+        this.C=Cash;
     }
 
     public double getTotalFunding(){

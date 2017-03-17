@@ -161,8 +161,8 @@ public class CSVModel extends SimState implements Steppable {
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
             hedgefund.getBehaviour().setRedbuf(redbuf);
-            hedgefund.getBalancesheet().addStocks(hedgefundinfo.get(i, 4));
-            hedgefund.getBalancesheet().addCash(hedgefundinfo.get(i, 3));
+            hedgefund.getBalancesheet().setStocks(hedgefundinfo.get(i, 4));
+            hedgefund.getBalancesheet().setCash(hedgefundinfo.get(i, 3));
             hedgefunds.add(hedgefund);
             hedgefund.balanceSheet.printBalanceSheet(hedgefund);
 

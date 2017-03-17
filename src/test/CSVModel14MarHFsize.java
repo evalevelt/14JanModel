@@ -13,22 +13,22 @@ import java.util.Arrays;
 /**
  * Created by eva on 24/01/2017.
  */
-public class CSVModel14MarSensitivity extends SimState implements Steppable {
+public class CSVModel14MarHFsize extends SimState implements Steppable {
 
     // PARAMETERS
-    int N_BANKS = 2; //NUMBER OF BANKS
-    int N_HEDGEFUNDS = 2; //NUMBER OF HEDGEFUNDS
+    int N_BANKS = 1; //NUMBER OF BANKS
+    int N_HEDGEFUNDS = 1; //NUMBER OF HEDGEFUNDS
 
     private double sizeShock = 0.8;
     public double alpha = 0.10;
     public double eta = 3;
-    public double depth = 9025;
+    public double depth = 30000;
     public double redbuf = -0.05;
 
     private int N_SIMULATIONS_rows;
     private int N_SIMULATIONS_columns;
-    private int N_ROWS = 100;
-    private int N_COLUMNS = 100;
+    private int N_ROWS = 12;
+    private int N_COLUMNS = 12;
 
     private Matrix initialRepos;
     private Matrix bankinfo;
@@ -55,18 +55,19 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
     Matrix allinfo = new Matrix(N_ROWS, 6);
     String[] allWhichOnes = new String[N_ROWS];
     double k = 0;
+    double HFsize;
 
 
-    public CSVModel14MarSensitivity(long seed) {
+    public CSVModel14MarHFsize(long seed) {
         super(seed);
     }
 
 
     //this is what youre going to change every time before running a simulation. you input parameters from a file and here say
     //which variables you want to have equal to those parameters
-    private void setParameters(double sizeShock, double bankcash) {
+    private void setParameters(double sizeShock, double HFsize) {
         this.sizeShock = sizeShock;
-        this.banks.get(0).getBalanceSheet().setCash(bankcash);
+        this.HFsize=HFsize;
     }
 
     //this function is called once
@@ -79,7 +80,7 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
         // initialRepos = csvdealer.readFile("dataReposRR.csv", N_HEDGEFUNDS+1, N_BANKS);
 
         //read all parameters you want to be trying
-        inputdata = csvdealer.readFile("testingstability.csv", 2, N_ROWS);
+        inputdata = csvdealer.readFile("testingstability.csv", 2, N_COLUMNS);
 
         //start MASON schedule
         scheduleRepeat = schedule.scheduleRepeating(this);
@@ -103,10 +104,14 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
                 System.out.println("Running simulation " + nSim + "with eta" + inputdata.get(nSim, 0) + "and depth" + inputdata.get(nSim_c, 1));
                 // load the parameters for this simulation run, including a name for the output file
                 double shock = inputdata.get(nSim, 0);
-                double bankcash = inputdata.get(nSim_c, 1);
+                double HFsize = inputdata.get(nSim_c, 1);
+
+                setParameters(shock, HFsize);
+                System.out.println(HFsize);
 
                 modelStart();
-                setParameters(shock, bankcash);
+
+
                 market.setS(market.S*sizeShock);
                 System.out.println(" I am applying the shock: "+sizeShock+"now!");
 
@@ -123,7 +128,7 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
         csvdealer.writeFile1("shocksandequity.csv", allequities, inputdata);
         csvdealer.writeFile2("detailedinfo.csv", inputdata, allinfo, allWhichOnes);
         csvdealer.writeFile3("bank0.csv", inputdata, bank0equity);
-        csvdealer.writeFile4("cash_stability.csv", inputdata, allequities);
+        csvdealer.writeFile4("HFSize_stability.csv", inputdata, allequities);
 
     }
 
@@ -139,9 +144,8 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
 
         initialRepos = new Matrix(N_BANKS, N_HEDGEFUNDS);
 
-        for (int j = 0; j < N_BANKS; j++) {
-            initialRepos.set(j, j, bankinfo.get(j, 4));
-        }
+
+        initialRepos.set(0,0, 0.85*HFsize);
 
         Matrix repos=initialRepos;
 
@@ -157,13 +161,12 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
             Bank bank = new Bank("Bank " + j, j);
             bank.getBehaviour().setMarket(market);
             bank.getBehaviour().setInfoExchange(infoExchange);
-            bank.getBalanceSheet().setLiability(bankinfo.get(j, 6));
+            bank.getBalanceSheet().setLiability(bankinfo.get(j,2)-HFsize);
+            bank.getBalanceSheet().setCash(bankinfo.get(j,1)*0.1);
             bank.getBehaviour().setNO();
             //bank.getBalanceSheet().setCash(bankinfo.get(j, 3));
-            bank.getBalanceSheet().setStocks(bankinfo.get(j, 5));
+            bank.getBalanceSheet().setStocks(bankinfo.get(j, 1)-bankinfo.get(j,1)*0.1-0.85*HFsize);
             bank.getBehaviour().setLeveragePreferences(bankinfo.get(j,7), bankinfo.get(j,8));
-
-
             banks.add(bank);
             bank.balanceSheet.printBalanceSheet(bank);
         }
@@ -174,8 +177,10 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
             hedgefund.getBehaviour().setMarket(market);
             hedgefund.getBehaviour().setInfoExchange(infoExchange);
             hedgefund.getBehaviour().setRedbuf(redbuf);
-            hedgefund.getBalancesheet().setStocks(hedgefundinfo.get(i, 4));
-            hedgefund.getBalancesheet().setCash(hedgefundinfo.get(i, 3));
+            hedgefund.getBalancesheet().setCash(0.1*HFsize);
+            hedgefund.getBalancesheet().setStocks(0.9*HFsize);
+            //hedgefund.getBalancesheet().setStocks(hedgefundinfo.get(i, 4));
+            //hedgefund.getBalancesheet().setCash(hedgefundinfo.get(i, 3));
             hedgefunds.add(hedgefund);
             hedgefund.balanceSheet.printBalanceSheet(hedgefund);
 
@@ -372,22 +377,24 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
                     if (Defaults_hedgefunds == N_HEDGEFUNDS && Defaults_banks == N_BANKS) {
                         finalequity = Arrays.copyOfRange(equity, 0, j );
                         allinfo.set(nSim, 0, equity[j]);
+                        allequities[nSim][nSim_c]=equity[j];
 
 
                         break;
                     } else {
                         finalequity = Arrays.copyOfRange(equity, 0, j);
                         allinfo.set(nSim, 0, equity[j-1]);
+                        allequities[nSim][nSim_c]=equity[j-1];
                         break;
                     }
                 }
             }
 
-            allequities[nSim][nSim_c]=finalequity[finalequity.length-1];
+            //allequities[nSim][nSim_c]=finalequity[finalequity.length-1];
 
 
             bank0equity[nSim]=banks.get(0).getBalanceSheet().calculateEquity();
-            bank1equity[nSim]=banks.get(1).getBalanceSheet().calculateEquity();
+//            bank1equity[nSim]=banks.get(1).getBalanceSheet().calculateEquity();
 
 
 
@@ -413,7 +420,7 @@ public class CSVModel14MarSensitivity extends SimState implements Steppable {
         }
 
     public static void main(String[] args){
-        doLoop(CSVModel14MarSensitivity.class, args);
+        doLoop(CSVModel14MarHFsize.class, args);
         System.exit(0);
 //
 
